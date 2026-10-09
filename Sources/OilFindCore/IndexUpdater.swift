@@ -58,6 +58,24 @@ private final class Subtree {
 }
 
 public final class IndexUpdater {
+    private let cancellationLock = NSLock()
+    private var cancelled = false
+    private var descriptors: [DirectoryDescriptor] = []
+    internal var isCancelled: Bool { cancellationLock.lock(); defer { cancellationLock.unlock() }; return cancelled }
+    public func cancel() {
+        cancellationLock.lock(); cancelled = true; let handles = descriptors; cancellationLock.unlock()
+        for handle in handles { handle.close() }
+    }
+    private func register(_ fd: Int32) -> DirectoryDescriptor? {
+        let handle = DirectoryDescriptor(fd)
+        cancellationLock.lock(); defer { cancellationLock.unlock() }
+        guard !cancelled else { handle.close(); return nil }
+        descriptors.append(handle); return handle
+    }
+    private func release(_ handle: DirectoryDescriptor) {
+        handle.close()
+        cancellationLock.lock(); descriptors.removeAll { $0 === handle }; cancellationLock.unlock()
+    }
     private var coverage = CoverageStats()
     private let config: IndexConfig
     private let devices: Set<dev_t>
@@ -82,6 +100,7 @@ public final class IndexUpdater {
         return true
     }
     private func attrs(_ path: [UInt8]) -> EntryAttrs? {
+        guard !isCancelled else { return nil }
         var s = stat(), cpath = path; cpath.append(0)
         let ok = cpath.withUnsafeBufferPointer { lstat(UnsafeRawPointer($0.baseAddress!).assumingMemoryBound(to: CChar.self), &s) == 0 }
         if !ok && (errno == EPERM || errno == EACCES) {
@@ -96,11 +115,13 @@ public final class IndexUpdater {
     }
     // Internal timing excludes all disk I/O and measures exactly phases 2 and 4.
     internal func apply(_ changes: [FSChange], to store: IndexStore, mutationTime: ((Double) -> Void)?) -> ApplySummary {
+        guard !isCancelled else { return ApplySummary() }
         let start = CFAbsoluteTimeGetCurrent()
         coverage = CoverageStats()
         var paths: [String: UInt32] = [:], maxId: UInt64 = 0
         var skippedPaths = Set<String>()
         for change in changes {
+            if isCancelled { return ApplySummary() }
             maxId = max(maxId, change.eventId)
             var path = change.path
             if config.rootPath == "/" && (path == "/System/Volumes/Data" || path.hasPrefix("/System/Volumes/Data/")) {
@@ -143,6 +164,7 @@ public final class IndexUpdater {
             }
             return DiskChange(bytes: bytes, flags: paths[path]!, attrs: attributes, nameStart: nameStart)
         }
+        guard !isCancelled else { return ApplySummary() }
         var summary = ApplySummary(), requests: [ScanRequest] = [], mutationMs = 0.0
         requests.reserveCapacity(disk.count)
         var inheritedChanges = Set<UInt32>()
@@ -213,6 +235,7 @@ public final class IndexUpdater {
                 outer[i].1 = outer[i].1 || roots[path]!
             } else { outer.append((path, roots[path]!)) }
         }
+        guard !isCancelled else { return summary }
         onPhase3?()
         let prepared = outer.compactMap { path, reconcile -> (root: [UInt8], isRoot: Bool, parentEnd: Int, reconcile: Bool, tree: Subtree)? in
             guard let tree = readSubtree(path) else { return nil }
@@ -220,6 +243,7 @@ public final class IndexUpdater {
             let parentEnd = isRoot ? 0 : (bytes.lastIndex(of: 47) == 0 ? 1 : bytes.lastIndex(of: 47)!)
             return (bytes, isRoot, parentEnd, reconcile, tree)
         }
+        guard !isCancelled else { return summary }
         summary.scannedDirs = prepared.count
         let ids = UnsafeMutablePointer<UInt32>.allocate(capacity: max(1, prepared.map { $0.tree.count }.max() ?? 0))
         defer { ids.deallocate() }
@@ -237,6 +261,7 @@ public final class IndexUpdater {
             reconcileBits![Int(i)] |= bit
         }
         for item in prepared {
+            if isCancelled { return summary }
             let tree = item.tree
             let rootParent = store.read {
                 item.root.withUnsafeBufferPointer { store.resolve(bytes: UnsafeBufferPointer(start: $0.baseAddress, count: item.parentEnd)) }
@@ -244,6 +269,7 @@ public final class IndexUpdater {
             guard item.isRoot || rootParent != nil else { continue }
             var j = 0
             while j < tree.count {
+                if isCancelled { return summary }
                 store.write {
                     let begin = CFAbsoluteTimeGetCurrent()
                     var changed = false
@@ -271,6 +297,7 @@ public final class IndexUpdater {
             }
             if item.reconcile { reconcileRoots.insert(ids[0]); mark(ids[0], bit: 1) }
         }
+        guard !isCancelled else { return summary }
         store.write {
             let begin = CFAbsoluteTimeGetCurrent()
             var changed = false
@@ -321,18 +348,21 @@ public final class IndexUpdater {
         return summary
     }
     private func readSubtree(_ root: String) -> Subtree? {
+        guard !isCancelled else { return nil }
         var path = Array(root.utf8)
         // Capture the root identity before opening, just as queued children use bulk file IDs.
         var expected = stat()
         guard root.withCString({ lstat($0, &expected) }) == 0, expected.st_mode & S_IFMT == S_IFDIR,
               devices.contains(expected.st_dev), path.withUnsafeBufferPointer({ allowed($0) }) else { return nil }
         if let hook = onSubtreeDirectoryOpen { path.withUnsafeBufferPointer(hook) }
+        guard !isCancelled else { return nil }
         let rootFD = root.withCString { open($0, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC) }
         guard rootFD >= 0 else { if errno == EPERM || errno == EACCES { path.withUnsafeBufferPointer { coverage.record(.noAccess, path: $0) } }; return nil }
+        guard let rootHandle = register(rootFD) else { return nil }
         var opened = stat()
-        guard fstat(rootFD, &opened) == 0, opened.st_mode & S_IFMT == S_IFDIR,
+        guard rootHandle.use({ fstat($0, &opened) }) == 0, opened.st_mode & S_IFMT == S_IFDIR,
               opened.st_ino == expected.st_ino, opened.st_dev == expected.st_dev,
-              devices.contains(opened.st_dev) else { close(rootFD); return nil }
+              devices.contains(opened.st_dev) else { release(rootHandle); return nil }
         let rootAttrs = EntryAttrs(type: 1, bsdFlags: opened.st_flags, size: UInt64(max(0, opened.st_size)), mtime: Int64(opened.st_mtimespec.tv_sec))
         let tree = Subtree()
         let rootName = root == config.rootPath ? [] : Array(path.suffix(from: (path.lastIndex(of: 47) ?? -1)+1))
@@ -341,8 +371,9 @@ public final class IndexUpdater {
         let scratch = UnsafeMutableRawPointer.allocate(byteCount: scratchSize, alignment: 8)
         let entries = UnsafeMutablePointer<oilfind_dirent>.allocate(capacity: scratchSize / 32)
         defer { scratch.deallocate(); entries.deallocate() }
-        func descend(_ parent: Int, fd: Int32) {
-            defer { close(fd) }
+        func descend(_ parent: Int, handle: DirectoryDescriptor) {
+            defer { release(handle) }
+            if isCancelled { return }
             if tree.bsdFlags[parent] & UInt32(SF_DATALESS) != 0 { path.withUnsafeBufferPointer { coverage.record(.cloud, path: $0) }; return }
             if !config.indexPackageContents {
                 let isPackage = path.withUnsafeBufferPointer { bytes in
@@ -354,7 +385,8 @@ public final class IndexUpdater {
             let filterFiles = path.withUnsafeBufferPointer { config.filtersFiles(inDirectory: $0) }
             let first = tree.count
             while true {
-                let n = sift_read_dir(fd, scratch, scratchSize, entries, Int32(scratchSize/32))
+                if isCancelled { return }
+                let n = handle.use { sift_read_dir($0, scratch, scratchSize, entries, Int32(scratchSize/32)) }
                 if n <= 0 { if n < 0 && (errno == EPERM || errno == EACCES) { path.withUnsafeBufferPointer { coverage.record(.noAccess, path: $0) } }; break }
                 for j in 0..<Int(n) {
                     let e = entries[j]
@@ -385,24 +417,27 @@ public final class IndexUpdater {
             }
             let end = tree.count
             for child in first..<end where tree.type[child] == 1 {
+                if isCancelled { return }
                 let length = path.count
                 if path.last != 47 { path.append(47) }
                 path.append(contentsOf: tree.name(child))
                 if let hook = onSubtreeDirectoryOpen { path.withUnsafeBufferPointer(hook) }
+                if isCancelled { return }
                 let childFD = withUnsafeTemporaryAllocation(of: CChar.self, capacity: path.count + 1) { cpath in
                     for i in path.indices { cpath[i] = CChar(bitPattern: path[i]) }
                     cpath[path.count] = 0
                     return open(cpath.baseAddress!, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)
                 }
                 if childFD >= 0 {
+                    guard let childHandle = register(childFD) else { return }
                     var openedChild = stat()
-                    if fstat(childFD, &openedChild) == 0 && openedChild.st_mode & S_IFMT == S_IFDIR && UInt64(openedChild.st_ino) == tree.fileid[child] && openedChild.st_dev == tree.dev[child] && devices.contains(openedChild.st_dev) {
-                        descend(child, fd: childFD)
-                    } else { close(childFD) }
+                    if childHandle.use({ fstat($0, &openedChild) }) == 0 && openedChild.st_mode & S_IFMT == S_IFDIR && UInt64(openedChild.st_ino) == tree.fileid[child] && openedChild.st_dev == tree.dev[child] && devices.contains(openedChild.st_dev) {
+                        descend(child, handle: childHandle)
+                    } else { release(childHandle) }
                 } else if errno == EPERM || errno == EACCES { path.withUnsafeBufferPointer { coverage.record(.noAccess, path: $0) } }
                 path.removeLast(path.count-length)
             }
         }
-        descend(0, fd: rootFD); return tree
+        descend(0, handle: rootHandle); return isCancelled ? nil : tree
     }
 }

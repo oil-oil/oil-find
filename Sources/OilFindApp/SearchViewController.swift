@@ -1,5 +1,6 @@
 import AppKit
 import Quartz
+import Darwin
 import OilFindCore
 
 private final class SearchGeneration {
@@ -29,9 +30,33 @@ final class SearchViewController: NSViewController, NSWindowDelegate, NSMenuDele
     private var languageObserver: NSObjectProtocol?
     private var menuTracking = false, dragging = false
     private var trashing: Set<URL> = []
-    private var selectionAnchor: (store: IndexStore, id: UInt32, path: String)?
+    private var selectionAnchor: (sourceID: String, store: IndexStore, id: UInt32, path: String)?
     private var pendingNewSearch: Bool?
     var manager: IndexManager?
+    var additionalSources: (() -> [SearchSource])?
+    private var sourceCaches: [String: SearchCache] = [:]
+    private var sourceCacheStores: [String: ObjectIdentifier] = [:]
+    private var searchSources: [SearchSource] {
+        let primary = manager?.store.map { SearchSource(id: "startup", displayName: "", isOnline: true, store: $0) }
+        return primary.map { [$0] + (additionalSources?() ?? []) } ?? (additionalSources?() ?? [])
+    }
+    func sourcesChanged() {
+        _ = generation.next(); results.cancelPendingRefresh(); results.cancelPress()
+        // Invalidate displayed actions immediately, including while the panel is hidden.
+        if results.selectedItem?.source.isOnline != true { quickLook.close() }
+        if let presented = results.result, let multi = presented.multiple {
+            let current = Set(searchSources.map(\.id))
+            if multi.sources.contains(where: { !current.contains($0.id) }) {
+                if let i = multi.sources.firstIndex(where: { $0.id == "startup" }) { present(multi.results[i], resetScroll: false) }
+                else {
+                    results.clear(); setState(.empty)
+                    footer.text = L10n.text("footer.results", Presentation.countText(0), Presentation.elapsedText(0))
+                }
+            }
+        }
+        results.localize()
+        startSearch(preserveSelection: true)
+    }
     var hidePanel: (() -> Void)?
     var onSettings: (() -> Void)?
     init(snapshot: Bool) {
@@ -60,11 +85,12 @@ final class SearchViewController: NSViewController, NSWindowDelegate, NSMenuDele
             self?.menuTracking = tracking
             if !tracking { self?.hideIfInactive() }
         }
+        if !snapshot { results.currentSource = { [weak self] id in self?.searchSources.first { $0.id == id } } }
         results.onOpen = { [weak self] in self?.openSelected() }
         results.onSelection = { [weak self] in
             self?.quickLook.refresh()
-            if let self, let result = self.results.result, let item = self.results.selectedItem {
-                self.selectionAnchor = (result.store, item.id, item.path)
+            if let self, let item = self.results.selectedItem {
+                self.selectionAnchor = (item.source.id, item.source.store, item.id, item.path)
             }
         }
         results.onContextMenu = { [weak self] _ in self?.contextMenu() }
@@ -73,7 +99,10 @@ final class SearchViewController: NSViewController, NSWindowDelegate, NSMenuDele
             self?.dragging = active
             if !active { self?.hideIfInactive() }
         }
-        quickLook.selectedURL = { [weak self] in self?.selectedURL }
+        quickLook.selectedURL = { [weak self] in
+            guard let self, self.results.selectedItem?.source.isOnline == true else { return nil }
+            return self.selectedURL
+        }
         quickLook.onKey = { [weak self] event in self?.handleKey(event) ?? false }
         searchField.onSettings = { [weak self] in self?.onSettings?() }
         languageObserver = NotificationCenter.default.addObserver(forName: L10n.changed, object: nil, queue: .main) { [weak self] _ in self?.localize() }
@@ -133,8 +162,7 @@ final class SearchViewController: NSViewController, NSWindowDelegate, NSMenuDele
     }
     func panelWillShow() {
         let currentQuery = Query.parse(searchField.text, store: manager?.store)
-        if let store = manager?.store, let result = results.result,
-           result.store === store, store.read({ store.version == result.storeVersion }),
+        if let result = results.result, result.isCurrent(searchSources),
            result.query.raw == currentQuery.raw, !currentQuery.isTimeDependent,
            Date().timeIntervalSince(result.createdAt) <= 600 { return }
         startSearch(preserveSelection: true)
@@ -172,29 +200,35 @@ final class SearchViewController: NSViewController, NSWindowDelegate, NSMenuDele
     }
     private func search(refresh: Bool, preserveSelection: Bool) {
         let token = generation.next()
-        guard let store = manager?.store else { refreshProgress(); return }
+        let sources = searchSources
+        guard let store = sources.first?.store else { refreshProgress(); return }
         var options = filters.options
         if !snapshot { options.pinyin = UserDefaults.standard.bool(forKey: "pinyinEnabled") }
         let query = editingQuery(store: store), previous = results.result
         let anchor = !refresh && preserveSelection ? selectionAnchor : nil
         queue.async { [weak self] in
             guard let self, self.generation.current(token) else { return }
-            if previous?.store !== store { self.cache.removeAll() }
-            let found = self.cache.lookup(query: query, options: options, store: store)
-                ?? Searcher.search(query, options: options, in: store, previous: previous, isCancelled: { !self.generation.current(token) })
-            guard let found, self.generation.current(token) else { return }
-            self.cache.insert(found)
-            var row = 0
-            if let anchor {
-                if anchor.store === store { row = found.items.firstIndex(of: anchor.id) ?? 0 }
-                else {
-                    // Resolve the old path once when the store identity changes.
-                    row = store.read {
-                        guard store.hashReady, let id = store.resolve(path: anchor.path) else { return 0 }
-                        return found.items.firstIndex(of: id) ?? 0
+            let found: SearchPresentation
+            if sources.count == 1 && sources[0].id == "startup" {
+                if !self.sourceCaches.isEmpty { self.sourceCaches.removeAll(); self.sourceCacheStores.removeAll() }
+                if previous?.single?.store !== store { self.cache.removeAll() }
+                guard let result = self.cache.lookup(query: query, options: options, store: store)
+                    ?? Searcher.search(query, options: options, in: store, previous: previous?.single, isCancelled: { !self.generation.current(token) }), self.generation.current(token) else { return }
+                self.cache.insert(result); found = SearchPresentation(result)
+            } else {
+                if previous?.single != nil { self.cache.removeAll() }
+                self.sourceCaches = self.sourceCaches.filter { key, _ in sources.contains { $0.id == key } }
+                self.sourceCacheStores = self.sourceCacheStores.filter { key, _ in sources.contains { $0.id == key } }
+                for source in sources {
+                    let identity = ObjectIdentifier(source.store)
+                    if self.sourceCacheStores[source.id] != identity {
+                        self.sourceCaches[source.id] = SearchCache(); self.sourceCacheStores[source.id] = identity
                     }
                 }
+                guard let result = MultiSearcher.search(query, options: options, in: sources, previous: previous?.multiple, caches: self.sourceCaches, isCancelled: { !self.generation.current(token) }), self.generation.current(token) else { return }
+                found = SearchPresentation(result)
             }
+            let row = anchor.flatMap { found.index(sourceID: $0.sourceID, store: $0.store, id: $0.id, path: $0.path) } ?? 0
             DispatchQueue.main.async { [weak self] in
                 guard let self, self.generation.current(token) else { return }
                 self.diagnostics = query.diagnostics
@@ -207,12 +241,16 @@ final class SearchViewController: NSViewController, NSWindowDelegate, NSMenuDele
             }
         }
     }
-    func present(_ result: SearchResult, selection: Int = 0, resetScroll: Bool = true) {
+    func present(_ result: SearchResult, selection: Int = 0, resetScroll: Bool = true) { present(SearchPresentation(result), selection: selection, resetScroll: resetScroll) }
+    func present(_ result: SearchPresentation, selection: Int = 0, resetScroll: Bool = true) {
         results.show(result, selection: selection, resetScroll: resetScroll)
         resultDidChange(result)
     }
     private func editingQuery(store: IndexStore?) -> Query {
-        Query.parse(searchField.text, store: store, editingRange: searchField.input.currentEditor() == nil ? nil : searchField.editor.selectedRange(), isComposing: searchField.editor.hasMarkedText())
+        Query.parse(searchField.text, store: store, editingRange: searchField.input.currentEditor() == nil ? nil : searchField.editor.selectedRange(), isComposing: searchField.editor.hasMarkedText(), pathExists: { [self] path in
+            if searchSources.contains(where: { source in source.store.read { source.store.containsPath(path) } }) { return true }
+            var info = stat(); return path.withCString { stat($0, &info) == 0 }
+        })
     }
     private func refreshDiagnostics() {
         let query = editingQuery(store: manager?.store ?? results.result?.store)
@@ -220,8 +258,8 @@ final class SearchViewController: NSViewController, NSWindowDelegate, NSMenuDele
         diagnostics = query.diagnostics
         configureEmpty(result); updateFooter(result)
     }
-    private func configureEmpty(_ result: SearchResult) {
-        empty.configure(diagnostic: diagnostics.first, hasNoAccess: snapshotNoAccess || result.store.read { result.store.coverage[.noAccess].count > 0 })
+    private func configureEmpty(_ result: SearchPresentation) {
+        empty.configure(diagnostic: diagnostics.first, hasNoAccess: snapshotNoAccess || result.sources.contains { source in source.store.read { source.store.coverage[.noAccess].count > 0 } })
     }
     func toggleSyntax(_ show: Bool? = nil) {
         let visible = show ?? !syntaxVisible
@@ -235,28 +273,31 @@ final class SearchViewController: NSViewController, NSWindowDelegate, NSMenuDele
             else { DispatchQueue.main.asyncAfter(deadline: .now() + Theme.Motion.chip.settlingDuration) { [weak self] in if self?.syntaxVisible == false { self?.syntax.isHidden = true } } }
         }
     }
-    private func resultDidChange(_ result: SearchResult) {
+    private func resultDidChange(_ result: SearchPresentation) {
         configureEmpty(result)
         setState(result.total == 0 ? .empty : nil)
         updateFooter(result)
         refreshProgress()
     }
-    private func updateFooter(_ result: SearchResult) {
+    private func updateFooter(_ result: SearchPresentation) {
         footer.warning = !diagnostics.isEmpty
         if let diagnostic = diagnostics.first { footer.text = L10n.diagnostic(diagnostic); return }
         if result.query.isEmpty {
-            let count = Presentation.countText(result.store.read { result.store.liveCount })
+            let count = Presentation.countText(result.sources.reduce(0) { count, source in count + source.store.read { source.store.liveCount } })
             footer.text = L10n.text("footer.recent", count)
         } else {
             footer.text = L10n.text(result.sortedCount < result.total ? "footer.partial" : "footer.results", Presentation.countText(result.total), Presentation.elapsedText(result.elapsedMs))
         }
     }
-    func prepareSnapshot(state: String, query: String, options: SearchOptions, store: IndexStore?, selection: Int) throws {
+    func prepareSnapshot(state: String, query: String, options: SearchOptions, store: IndexStore?, selection: Int, additionalSources: [SearchSource] = []) throws {
         _ = view
         searchField.text = state == "recent" ? "" : query; filters.options = options
         if state == "indexing" {
             setState(.indexing); indexing.updateCount(1_234_567); searchField.indexing = true
             footer.text = L10n.text("footer.indexing", Presentation.countText(1_234_567)); return
+        }
+        if let store, !additionalSources.isEmpty, let found = MultiSearcher.search(Query.parse(searchField.text, store: store), options: options, in: [SearchSource(id: "startup", displayName: "", isOnline: true, store: store)] + additionalSources) {
+            diagnostics = found.query.diagnostics; present(SearchPresentation(found), selection: selection); return
         }
         guard let store, let found = Searcher.search(Query.parse(searchField.text, store: store), options: options, in: store) else { throw SnapshotError.failed("Cannot search snapshot index") }
         diagnostics = Query.parse(searchField.text, store: store).diagnostics
@@ -295,7 +336,7 @@ final class SearchViewController: NSViewController, NSWindowDelegate, NSMenuDele
         if syntaxVisible { return false }
         switch event.keyCode {
         case 126: if command { results.select(0, repeatKey: event.isARepeat) } else { results.move(-1, repeatKey: event.isARepeat) }; return true
-        case 125: if command { results.select((results.result?.items.count ?? 1) - 1, repeatKey: event.isARepeat) } else { results.move(1, repeatKey: event.isARepeat) }; return true
+        case 125: if command { results.select((results.result?.count ?? 1) - 1, repeatKey: event.isARepeat) } else { results.move(1, repeatKey: event.isARepeat) }; return true
         case 116: results.page(-1, repeatKey: event.isARepeat); return true
         case 121: results.page(1, repeatKey: event.isARepeat); return true
         case 36, 76: if command { revealSelected() } else { openSelected() }; return true
@@ -306,7 +347,7 @@ final class SearchViewController: NSViewController, NSWindowDelegate, NSMenuDele
         }
         guard command else { return false }
         switch key {
-        case "y": quickLook.toggle(); return true
+        case "y": previewSelected(); return true
         case "c":
             if option { copyName(); return true }
             if searchField.input.currentEditor()?.selectedRange.length ?? 0 > 0 { return false }
@@ -319,13 +360,28 @@ final class SearchViewController: NSViewController, NSWindowDelegate, NSMenuDele
     }
     private func openSelected() {
         guard stateView == nil, (view.window as? SearchPanel)?.hiding != true, let url = selectedURL else { return }
+        guard allowOnlineAction() else { return }
         guard FileManager.default.fileExists(atPath: url.path) else { NSSound.beep(); return }
         results.pressOpen { [weak self] in
+            guard self?.allowOnlineAction() == true else { return }
             guard NSWorkspace.shared.open(url) else { NSSound.beep(); return }
             self?.hidePanel?()
         }
     }
-    private func revealSelected() { guard stateView == nil, let url = selectedURL else { return }; NSWorkspace.shared.activateFileViewerSelecting([url]); hidePanel?() }
+    private func revealSelected() { guard stateView == nil, let url = selectedURL, allowOnlineAction() else { return }; NSWorkspace.shared.activateFileViewerSelecting([url]); hidePanel?() }
+    @discardableResult
+    private func allowOnlineAction() -> Bool {
+        guard let item = results.selectedItem else { return false }
+        // Check the live provider as well as the submitted snapshot during an in-flight refresh.
+        let current = searchSources.first { $0.id == item.source.id }
+        guard item.source.isOnline && (snapshot || current?.isOnline == true) else {
+            footer.warning = true; footer.actionable = false
+            footer.text = L10n.text("source.unavailable", item.source.displayName)
+            return false
+        }
+        return snapshot || current?.store === item.source.store
+    }
+    private func previewSelected() { if allowOnlineAction() { quickLook.toggle() } }
     private func copyPath() {
         guard stateView == nil, let url = selectedURL else { return }
         NSPasteboard.general.clearContents(); NSPasteboard.general.writeObjects([url as NSURL]); NSPasteboard.general.setString(url.path, forType: .string)
@@ -338,7 +394,7 @@ final class SearchViewController: NSViewController, NSWindowDelegate, NSMenuDele
     }
     private func trashSelected() {
         guard stateView == nil, let url = selectedURL, let item = results.selectedItem else { return }
-        guard FileManager.default.fileExists(atPath: url.path), trashing.insert(url).inserted else { return }
+        guard allowOnlineAction(), FileManager.default.fileExists(atPath: url.path), trashing.insert(url).inserted else { return }
         NSWorkspace.shared.recycle([url]) { [weak self] _, error in
             DispatchQueue.main.async {
                 self?.trashing.remove(url)
@@ -352,12 +408,14 @@ final class SearchViewController: NSViewController, NSWindowDelegate, NSMenuDele
         for (i, key) in ["open", "reveal", "preview", "-", "copyPath", "copyName", "-", "trash"].enumerated() {
             if key == "-" { menu.addItem(.separator()); continue }
             let item = NSMenuItem(title: L10n.text("ctx." + key), action: #selector(contextAction(_:)), keyEquivalent: "")
-            item.target = self; item.tag = i; menu.addItem(item)
+            item.target = self; item.tag = i
+            if i == 7 { item.isEnabled = results.selectedItem?.source.isOnline == true }
+            menu.addItem(item)
         }
         return menu
     }
     @objc private func contextAction(_ item: NSMenuItem) {
-        switch item.tag { case 0: openSelected(); case 1: revealSelected(); case 2: quickLook.toggle(); case 4: copyPath(); case 5: copyName(); case 7: trashSelected(); default: break }
+        switch item.tag { case 0: openSelected(); case 1: revealSelected(); case 2: previewSelected(); case 4: copyPath(); case 5: copyName(); case 7: trashSelected(); default: break }
     }
     func menuWillOpen(_ menu: NSMenu) { menuTracking = true }
     func menuDidClose(_ menu: NSMenu) { menuTracking = false; hideIfInactive() }

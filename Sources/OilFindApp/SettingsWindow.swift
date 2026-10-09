@@ -31,6 +31,8 @@ final class SettingsModel: ObservableObject {
     @Published var granted = false
     @Published var rebuilding = false
     weak var manager: IndexManager?
+    var additionalSources: (() -> [SearchSource])?
+    private var inspectionGeneration = 0
     var onConfigChange: (() -> Void)?
     var onPinyinChange: (() -> Void)?
     var suspendHotKey: (() -> Void)?
@@ -81,12 +83,15 @@ final class SettingsModel: ObservableObject {
         if !snapshot { launchAtLogin = SMAppService.mainApp.status == .enabled }
         granted = snapshot ? false : Permissions.hasFullDiskAccess()
         rebuilding = manager?.isRescanning == true || manager?.state == .scanning || manager?.state == .loading
+        var stats = CoverageStats()
         if let store = snapshotStore ?? manager?.store {
             let values = store.read { (store.liveCount, store.scanFinishedAt, store.coverage) }
-            if coverage != values.2 { coverage = values.2 }
+            stats = values.2
             indexedCount = values.0
             scanDate = values.1 == 0 ? nil : Date(timeIntervalSince1970: TimeInterval(values.1))
         } else { indexedCount = 0; scanDate = nil }
+        if !snapshot { stats.refreshVolumes(excluding: Set((additionalSources?() ?? []).filter(\.isOnline).map { $0.store.rootPath })) }
+        if coverage != stats { coverage = stats }
         if wasGranted != granted { onContentChange?() }
     }
     func checkFile(in window: NSWindow?) {
@@ -94,10 +99,19 @@ final class SettingsModel: ObservableObject {
         let panel = NSOpenPanel(); panel.canChooseDirectories = true; panel.canChooseFiles = true; panel.allowsMultipleSelection = false
         panel.beginSheetModal(for: window) { [weak self] response in
             guard let self, response == .OK, let path = panel.url?.path else { return }
-            let manager = self.manager
-            DispatchQueue.global(qos: .utility).async {
-                let answer = manager?.explain(path: path) ?? .pending
-                DispatchQueue.main.async { self.coverageExplanation = answer; self.explanation = L10n.explanation(answer) }
+            self.check(path: path)
+        }
+    }
+    func check(path: String) {
+        // Capture extension state on the main thread before inspecting the filesystem.
+        let sources = (additionalSources?() ?? []).filter(\.isOnline), manager = manager
+        inspectionGeneration += 1
+        let generation = inspectionGeneration
+        DispatchQueue.global(qos: .utility).async {
+            let answer = sources.lazy.compactMap { $0.explain(path: path) }.first ?? manager?.explain(path: path) ?? .pending
+            DispatchQueue.main.async {
+                guard generation == self.inspectionGeneration else { return }
+                self.coverageExplanation = answer; self.explanation = L10n.explanation(answer)
             }
         }
     }
@@ -422,6 +436,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     let model: SettingsModel
     init(model: SettingsModel, appExtension: ApplicationExtension? = nil) {
         self.model = model
+        model.additionalSources = { [weak appExtension] in appExtension?.searchSources() ?? [] }
         let window = SettingsWindow(contentRect: NSRect(x: 0, y: 0, width: 540, height: model.contentHeight), styleMask: [.titled, .closable], backing: .buffered, defer: false)
         window.settingsModel = model
         window.title = L10n.text("settings.title"); window.isReleasedWhenClosed = false

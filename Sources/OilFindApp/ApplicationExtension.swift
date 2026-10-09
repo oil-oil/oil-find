@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import OilFindCore
 
 /// Optional application integration, outside the search and indexing hot paths.
 public protocol ApplicationExtension: AnyObject {
@@ -7,10 +8,17 @@ public protocol ApplicationExtension: AnyObject {
     func prepareArguments(_ arguments: inout [String]) throws
     #endif
     func start(chinese: Bool, showSettings: @escaping () -> Void)
+    func searchSources() -> [SearchSource]
+    var onSearchSourcesChange: (() -> Void)? { get set }
     func stop()
     func languageDidChange(chinese: Bool)
     func handle(_ url: URL)
     func settingsSection(window: @escaping () -> NSWindow?) -> AnyView
+}
+
+public extension ApplicationExtension {
+    func searchSources() -> [SearchSource] { [] }
+    var onSearchSourcesChange: (() -> Void)? { get { nil } set { } }
 }
 
 #if DEBUG

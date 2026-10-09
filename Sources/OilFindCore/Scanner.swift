@@ -3,6 +3,7 @@ import Darwin
 import COilFind
 
 public struct ScanBuffer {
+    public init() {}
     public var ids: [UInt32] = [], parents: [UInt32] = [], sizes: [UInt32] = [], mtimes: [UInt32] = []
     public var flags: [UInt8] = [], depths: [UInt8] = [], kinds: [UInt8] = []
     public var nameLens: [UInt32] = [], nameBytes: [UInt8] = []
@@ -13,6 +14,9 @@ public struct ScanBuffer {
     }
 }
 public struct ScanOutput {
+    public init(buffers: [ScanBuffer], count: Int, homeIndex: UInt32, elapsed: Double, finishedAt: UInt64, coverage: CoverageStats = CoverageStats()) {
+        self.buffers = buffers; self.count = count; self.homeIndex = homeIndex; self.elapsed = elapsed; self.finishedAt = finishedAt; self.coverage = coverage
+    }
     public let buffers: [ScanBuffer]
     public let count: Int
     public let homeIndex: UInt32
@@ -55,11 +59,22 @@ private final class DirectoryOpenHook: @unchecked Sendable {
     init(_ body: @escaping (String) -> Void) { self.body = body }
     func call(_ path: String) { body(path) }
 }
+// Synchronize close with each syscall so cancellation cannot race descriptor reuse.
+internal final class DirectoryDescriptor {
+    private let lock = NSLock()
+    private var fd: Int32
+    init(_ fd: Int32) { self.fd = fd }
+    func use<T>(_ body: (Int32) -> T) -> T { lock.lock(); defer { lock.unlock() }; return body(fd) }
+    func close() { lock.lock(); defer { lock.unlock() }; if fd >= 0 { Darwin.close(fd); fd = -1 } }
+    deinit { close() }
+}
 public final class Scanner {
     public let config: IndexConfig
     public let threads: Int
     private let condition = NSCondition()
     private var tasks: [DirTask] = []
+    private let descriptorLock = NSLock()
+    private var descriptors: [DirectoryDescriptor] = []
     private var active = 0, nextId: UInt32 = 1
     private var cancelled = false
     private var runStarted = false
@@ -70,7 +85,7 @@ public final class Scanner {
     private let rootPathLength: Int
     private let excludedNameBytes: [[UInt8]]
     private var allowedDevices = Set<Int32>()
-    private var directoryOpenHook: DirectoryOpenHook?
+    private var directoryOpenHook: DirectoryOpenHook?, directoryCompletionHook: DirectoryOpenHook?
     private let directoryOpenHookLock = NSLock()
     public init(config: IndexConfig, threads: Int = ProcessInfo.processInfo.activeProcessorCount) {
         self.config = config; self.threads = max(1, threads)
@@ -82,8 +97,29 @@ public final class Scanner {
         precondition(!runStarted, "the directory-open hook must be installed before run")
         directoryOpenHook = hook.map { DirectoryOpenHook($0) }
     }
+    internal func installDirectoryCompletionHook(_ hook: ((String) -> Void)?) {
+        condition.lock(); defer { condition.unlock() }
+        precondition(!runStarted, "the directory-completion hook must be installed before run")
+        directoryCompletionHook = hook.map { DirectoryOpenHook($0) }
+    }
     public var scannedCount: Int { condition.lock(); defer { condition.unlock() }; return Int(nextId) }
-    public func cancel() { condition.lock(); cancelled = true; condition.broadcast(); condition.unlock() }
+    public func cancel() {
+        condition.lock(); cancelled = true; condition.broadcast()
+        descriptorLock.lock(); let handles = descriptors; descriptorLock.unlock()
+        condition.unlock()
+        for handle in handles { handle.close() }
+    }
+    private func register(_ fd: Int32) -> DirectoryDescriptor? {
+        let handle = DirectoryDescriptor(fd)
+        condition.lock(); defer { condition.unlock() }
+        guard !cancelled else { handle.close(); return nil }
+        descriptorLock.lock(); descriptors.append(handle); descriptorLock.unlock()
+        return handle
+    }
+    private func release(_ handle: DirectoryDescriptor) {
+        handle.close()
+        descriptorLock.lock(); descriptors.removeAll { $0 === handle }; descriptorLock.unlock()
+    }
     private func device(_ path: String) -> Int32? { var s = stat(); return path.withCString { stat($0, &s) == 0 ? Int32(s.st_dev) : nil } }
     private func record(_ reason: CoverageReason, _ path: UnsafeBufferPointer<UInt8>) {
         coverageLock.lock(); coverage.record(reason, path: path); coverageLock.unlock()
@@ -99,15 +135,16 @@ public final class Scanner {
         condition.lock()
         guard !runStarted && !cancelled else { condition.unlock(); return nil }
         runStarted = true
-        let directoryOpenHook = self.directoryOpenHook
+        let directoryOpenHook = self.directoryOpenHook, directoryCompletionHook = self.directoryCompletionHook
         condition.unlock()
         let start = CFAbsoluteTimeGetCurrent()
         if config.rootPath == "/" { coverage.refreshVolumes() }
         let rootFD = config.rootPath.withCString { open($0, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC) }
         guard rootFD >= 0 else { return nil }
-        defer { close(rootFD) }
         var rootStat = stat()
-        guard fstat(rootFD, &rootStat) == 0, (rootStat.st_mode & S_IFMT) == S_IFDIR else { return nil }
+        let rootValid = fstat(rootFD, &rootStat) == 0 && (rootStat.st_mode & S_IFMT) == S_IFDIR
+        close(rootFD)
+        guard rootValid else { return nil }
         let rootDev = Int32(rootStat.st_dev)
         allowedDevices = [rootDev]
         if config.rootPath == "/", let dataDev = device("/System/Volumes/Data") { allowedDevices.insert(dataDev) }
@@ -138,18 +175,23 @@ public final class Scanner {
                         directoryOpenHook.call(String(decoding: relative, as: UTF8.self))
                         directoryOpenHookLock.unlock()
                     }
+                    condition.lock(); let shouldStop = cancelled; condition.unlock()
+                    if shouldStop { condition.lock(); active -= 1; condition.broadcast(); condition.unlock(); continue }
                     let fd = task.path.withUnsafeBufferPointer {
                         open(UnsafeRawPointer($0.baseAddress!).assumingMemoryBound(to: CChar.self), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)
                     }
                     if fd >= 0 {
+                        guard let handle = register(fd) else { condition.lock(); active -= 1; condition.broadcast(); condition.unlock(); continue }
+                        defer { release(handle) }
                         var opened = stat()
-                        guard fstat(fd, &opened) == 0, opened.st_mode & S_IFMT == S_IFDIR, UInt64(opened.st_ino) == task.fileid, Int32(opened.st_dev) == task.dev, allowedDevices.contains(Int32(opened.st_dev)) else { close(fd); condition.lock(); active -= 1; condition.broadcast(); condition.unlock(); continue }
-                        defer { close(fd) }
+                        guard handle.use({ fstat($0, &opened) }) == 0, opened.st_mode & S_IFMT == S_IFDIR, UInt64(opened.st_ino) == task.fileid, Int32(opened.st_dev) == task.dev, allowedDevices.contains(Int32(opened.st_dev)) else { condition.lock(); active -= 1; condition.broadcast(); condition.unlock(); continue }
                         let filterFiles = task.path.withUnsafeBufferPointer { config.filtersFiles(inDirectory: UnsafeBufferPointer(start: $0.baseAddress, count: $0.count - 1)) }
                         let isHome = task.path.dropLast().elementsEqual(homeBytes)
                         let inherited = task.name.withUnsafeBufferPointer { n in task.grandparentName.withUnsafeBufferPointer { p in Classifier.inheritedForChildren(dirFlags: task.id == 0 ? SiftFlag.dir : task.inherited, dirName: n, dirDepth: task.depth, parentName: p, isHome: isHome) } }
                         while true {
-                            let n = sift_read_dir(fd, scratch, scratchSize, entries, Int32(scratchSize / 32))
+                            condition.lock(); let beforeRead = cancelled; condition.unlock()
+                            if beforeRead { break }
+                            let n = handle.use { sift_read_dir($0, scratch, scratchSize, entries, Int32(scratchSize / 32)) }
                             condition.lock(); let stop = cancelled; condition.unlock()
                             if stop { break }
                             if n <= 0 { if n < 0 && (errno == EPERM || errno == EACCES) { task.path.dropLast().withContiguousStorageIfAvailable { record(.noAccess, $0) } }; break }
@@ -222,6 +264,10 @@ public final class Scanner {
                     } else if errno == EPERM || errno == EACCES {
                         task.path.dropLast().withContiguousStorageIfAvailable { record(.noAccess, $0) }
                     }
+                }
+                if let directoryCompletionHook {
+                    let relative = task.path[rootPathLength..<(task.path.count - 1)].drop(while: { $0 == 47 })
+                    directoryCompletionHook.call(String(decoding: relative, as: UTF8.self))
                 }
                 condition.lock(); tasks.append(contentsOf: children); active -= 1; condition.broadcast(); condition.unlock()
             }

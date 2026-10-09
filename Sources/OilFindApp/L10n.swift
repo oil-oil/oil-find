@@ -38,6 +38,8 @@ enum L10n {
         }
     }
     private static let strings: [String: (String, String)] = [
+        "source.offline": ("未连接", "Not connected"),
+        "source.unavailable": ("「%@」未连接，连接后才能打开。", "“%@” is not connected. Connect it to open this file."),
         "update.check": ("检查更新…", "Check for Updates…"),
         "update.available.title": ("Oil Find %@ 可以更新了", "Oil Find %@ Is Available"),
         "update.available.current": ("你现在用的是 %@。", "You have %@."),
@@ -63,13 +65,13 @@ enum L10n {
         "coverage.scope": ("按索引范围排除：%@ 项", "Excluded by index scope: %@"),
         "coverage.userExcluded": ("在你排除的路径里：%@ 项", "In paths you excluded: %@"),
         "coverage.cloud": ("仅在云端的文件夹：%@ 个（里面的文件没有列出）", "Cloud-only folders: %@ (their contents aren't listed)"),
-        "coverage.volumes": ("外置磁盘和网络卷：%@ 个（暂不支持）", "External and network volumes: %@ (not supported yet)"),
+        "coverage.volumes": ("外置磁盘和网络卷：%@ 个（不在索引范围内）", "External and network volumes: %@ (not indexed)"),
         "coverage.check": ("检查文件为什么搜不到…", "Why Can't I Find a File…"),
         "explain.indexed": ("已在索引中，可以搜到。", "It's in the index and can be found."),
         "explain.scope": ("被「%@」范围排除。在上面打开这个开关后就能搜到。", "Excluded by the \"%@\" scope. Turn it on above to include it."),
         "explain.userExcluded": ("在你排除的路径「%@」里。", "It's inside a path you excluded: %@."),
         "explain.noAccess": ("Oil Find 没有权限读取它所在的文件夹。授予完全磁盘访问权限后会自动补上。", "Oil Find can't read the folder it's in. It'll be added once you grant Full Disk Access."),
-        "explain.volume": ("它在外置磁盘或网络卷上，目前还不支持。", "It's on an external or network volume, which isn't supported yet."),
+        "explain.volume": ("它在外置磁盘或网络卷上，不在索引范围内。", "It's on an external or network volume, which isn't indexed."),
         "explain.cloud": ("它在仅存于云端的文件夹里，下载到这台 Mac 后才能搜到。", "It's in a folder that's only in the cloud. Download it to this Mac to search it."),
         "explain.pending": ("还没有进入索引，稍后会自动加入。", "It isn't indexed yet. It'll be added shortly."),
         "empty.noAccess": ("有些文件夹没有访问权限，其中的文件搜不到。", "Some folders aren't accessible, so files in them can't be found."),

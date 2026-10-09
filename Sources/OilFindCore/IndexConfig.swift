@@ -53,6 +53,19 @@ public struct IndexConfig {
         for part in parts { for b in part.utf8 { h = (h ^ UInt64(b)) &* 0x100000001b3 }; h = (h ^ 0xff) &* 0x100000001b3 }
         return h
     }
+    // Catalog identity and relative exclusions remain stable after a volume rename.
+    public func fingerprint(volumeUUID: String) -> UInt64 {
+        var relative = self
+        func canonical(_ path: String) -> String {
+            if path == rootPath { return "/" }
+            if path.hasPrefix(rootPath + "/") { return String(path.dropFirst(rootPath.count)) }
+            return path
+        }
+        relative.rootPath = "/volume/" + volumeUUID
+        relative.excludedPaths = excludedPaths.map(canonical)
+        relative.userExcludedPaths = userExcludedPaths.map(canonical)
+        return relative.fingerprint
+    }
     internal func filtersFiles(inDirectory path: UnsafeBufferPointer<UInt8>) -> Bool {
         (!indexSystemDirs && path.elementsEqual(Self.systemBytes))
             || (!indexUserLibrary && path.elementsEqual(userLibraryBytes))

@@ -68,8 +68,10 @@ func typing(_ text: String, in store: IndexStore, useCache: Bool = true, output:
     for prefix in prefixes.dropLast().reversed() { _ = step(prefix) }
     return (finalCount, maximum)
 }
-guard let command = args.first else { fputs("usage: oilfind-cli scan|stats|search|typing|bench|watch|m2-bench\n", stderr); exit(2) }
+guard let command = args.first else { fputs("usage: oilfind-cli scan|stats|search|typing|bench|watch|m2-bench|multi-bench\n", stderr); exit(2) }
 switch command {
+case "multi-bench":
+    multiBenchmark(db: db, args: args)
 case "watch":
     setbuf(stdout, nil)
     var config = IndexConfig.standard(limited: args.contains("--limited"))

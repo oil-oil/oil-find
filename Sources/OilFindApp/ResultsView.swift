@@ -4,6 +4,7 @@ import OilFindCore
 
 struct ResultItem {
     let id: UInt32
+    let source: SearchSource
     let name: String, parentPath: String, path: String
     let size: UInt64, modified: Date, flags: UInt8, kind: UInt8
 }
@@ -43,16 +44,16 @@ private final class ResultCell: NSTableCellView {
     }
     func configure(_ item: ResultItem, query: Query, icons: IconProvider) {
         displayedPath = item.path
-        let name = NSMutableAttributedString(string: item.name, attributes: [.font: nameLabel.font!, .foregroundColor: NSColor.labelColor])
-        for range in Presentation.highlightRanges(name: item.name, query: query) {
+        let name = NSMutableAttributedString(string: item.name, attributes: [.font: nameLabel.font!, .foregroundColor: item.source.isOnline ? NSColor.labelColor : NSColor.tertiaryLabelColor])
+        for range in item.source.isOnline ? Presentation.highlightRanges(name: item.name, query: query) : [] {
             name.addAttributes([.foregroundColor: NSColor.controlAccentColor, .font: NSFont.systemFont(ofSize: 13.5, weight: .semibold)], range: range)
         }
         nameLabel.attributedStringValue = name
-        pathLabel.stringValue = Presentation.abbreviate(path: item.parentPath, home: NSHomeDirectory())
+        pathLabel.stringValue = Presentation.abbreviate(path: item.parentPath, home: NSHomeDirectory()) + (item.source.isOnline ? "" : " · " + L10n.text("source.offline"))
         dateLabel.stringValue = Presentation.dateText(item.modified, now: Date(), calendar: .current, chinese: L10n.chinese)
         sizeLabel.stringValue = item.kind == 2 ? L10n.text("meta.app") : item.flags & SiftFlag.dir != 0 && item.flags & SiftFlag.package == 0 ? L10n.text("meta.folder") : Presentation.sizeText(item.size)
         toolTip = item.path
-        icon.image = icons.icon(name: item.name, path: item.path, flags: item.flags, kind: item.kind) { [weak self] image in
+        icon.image = icons.icon(name: item.name, path: item.path, flags: item.flags, kind: item.kind, resolveFileIcon: item.source.isOnline) { [weak self] image in
             if self?.displayedPath == item.path { self?.icon.image = image }
         }
     }
@@ -125,19 +126,20 @@ final class ResultsView: FlippedView, NSTableViewDataSource, NSTableViewDelegate
     private var scrollEnd: DispatchWorkItem?
     // Legacy wheels have no end phase; also bridge the gesture-to-momentum gap.
     private static let scrollQuietPeriod = 0.12
-    private var pendingRefresh: SearchResult?
+    private var pendingRefresh: SearchPresentation?
     private var scrolling: Bool { liveScrolling || wheelScrolling || momentumScrolling }
     let icons = IconProvider()
-    var result: SearchResult?
+    var result: SearchPresentation?
+    var currentSource: ((String) -> SearchSource?)?
     var onOpen: (() -> Void)?
     var onSelection: (() -> Void)?
     var onContextMenu: ((Int) -> NSMenu?)?
     var onDragging: ((Bool) -> Void)?
-    var onRefreshApplied: ((SearchResult) -> Void)?
+    var onRefreshApplied: ((SearchPresentation) -> Void)?
     var selectedRow: Int { table.selectedRow }
     var selectedID: UInt32? {
-        guard let result, result.items.indices.contains(selectedRow) else { return nil }
-        return result.items[selectedRow]
+        guard let result, selectedRow >= 0 && selectedRow < result.count else { return nil }
+        return result.row(selectedRow)?.id
     }
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -175,7 +177,9 @@ final class ResultsView: FlippedView, NSTableViewDataSource, NSTableViewDelegate
         if table.tableColumns[0].width != width { table.tableColumns[0].width = width }
         updateSelection(animated: false); recomputeHover()
     }
-    func show(_ result: SearchResult, selection: Int = 0, resetScroll: Bool = true) {
+    func show(_ result: SearchResult, selection: Int = 0, resetScroll: Bool = true) { show(SearchPresentation(result), selection: selection, resetScroll: resetScroll) }
+    func refresh(_ result: SearchResult) { refresh(SearchPresentation(result)) }
+    func show(_ result: SearchPresentation, selection: Int = 0, resetScroll: Bool = true) {
         cancelPendingRefresh(); hideHover(immediately: true)
         refreshing = true
         self.result = result; table.reloadData()
@@ -184,28 +188,27 @@ final class ResultsView: FlippedView, NSTableViewDataSource, NSTableViewDelegate
         updateSelection(animated: false); refreshing = false
         recomputeHover(); onSelection?()
     }
+    func clear() {
+        cancelPendingRefresh(); cancelPress(); result = nil
+        table.reloadData(); table.deselectAll(nil); updateSelection(animated: false); hideHover(immediately: true)
+    }
     func cancelPendingRefresh() { pendingRefresh = nil }
     func localize() {
         let range = table.rows(in: table.visibleRect)
         guard range.location != NSNotFound, range.length > 0 else { return }
         table.reloadData(forRowIndexes: IndexSet(integersIn: range.location..<NSMaxRange(range)), columnIndexes: IndexSet(integer: 0))
     }
-    func refresh(_ result: SearchResult) {
+    func refresh(_ result: SearchPresentation) {
         let previous = self.result
-        let action = resultRefreshAction(oldItems: previous?.items ?? [], newItems: result.items,
-                                         sameStore: previous?.store === result.store,
-                                         sameVersion: previous?.storeVersion == result.storeVersion,
-                                         scrolling: scrolling, dragging: dragging)
+        let sameRows = previous?.sameRows(as: result) == true
+        let action: ResultRefreshAction = scrolling || dragging ? .deferRefresh : sameRows
+            ? (previous?.sameMetadata(as: result) == true ? .replaceResult : .reloadVisibleRows) : .reloadPreservingViewport
         if action == .deferRefresh { pendingRefresh = result; return }
         pendingRefresh = nil
         let origin = scroll.contentView.bounds.origin
         var row = selectedRow
         if action == .reloadPreservingViewport {
-            var id = selectedID
-            if previous?.store !== result.store {
-                id = selectedItem.flatMap { item in result.store.read { result.store.hashReady ? result.store.resolve(path: item.path) : nil } }
-            }
-            row = id.flatMap { result.items.firstIndex(of: $0) } ?? 0
+            row = selectedItem.flatMap { result.index(sourceID: $0.source.id, store: $0.source.store, id: $0.id, path: $0.path) } ?? 0
         }
         refreshing = true; self.result = result
         switch action {
@@ -214,7 +217,7 @@ final class ResultsView: FlippedView, NSTableViewDataSource, NSTableViewDelegate
             hideHover(immediately: true)
             let visible = table.rows(in: table.visibleRect)
             if visible.location != NSNotFound {
-                let range = NSIntersectionRange(visible, NSRange(location: 0, length: result.items.count))
+                let range = NSIntersectionRange(visible, NSRange(location: 0, length: result.count))
                 if range.length > 0 {
                     table.reloadData(forRowIndexes: IndexSet(integersIn: range.location..<NSMaxRange(range)), columnIndexes: IndexSet(integer: 0))
                 }
@@ -272,12 +275,15 @@ final class ResultsView: FlippedView, NSTableViewDataSource, NSTableViewDelegate
     }
     deinit { scrollEnd?.cancel(); NotificationCenter.default.removeObserver(self) }
     func item(at row: Int) -> ResultItem? {
-        guard let result, result.items.indices.contains(row) else { return nil }
-        let store = result.store, id = result.items[row]
+        guard let result, let hit = result.row(row) else { return nil }
+        let source: SearchSource
+        if let currentSource { guard let current = currentSource(hit.source.id) else { return nil }; source = SearchSource(id: current.id, displayName: current.displayName, isOnline: current.isOnline && current.store === hit.source.store, store: hit.source.store) }
+        else { source = hit.source }
+        let store = hit.source.store, id = hit.id
         return store.read {
             guard Int(id) < store.count, store.isLive(id) else { return nil }
             let name = store.name(id), parent = store.parentPath(id)
-            return ResultItem(id: id, name: name, parentPath: parent, path: parent == "/" ? "/" + name : parent + "/" + name,
+            return ResultItem(id: id, source: source, name: name, parentPath: parent, path: parent == "/" ? "/" + name : parent + "/" + name,
                               size: store.size(id), modified: store.modified(id), flags: store.flags[Int(id)], kind: store.kind[Int(id)])
         }
     }
@@ -287,15 +293,15 @@ final class ResultsView: FlippedView, NSTableViewDataSource, NSTableViewDelegate
         setSelection(row, reveal: true)
     }
     private func setSelection(_ row: Int, reveal: Bool) {
-        guard let result, !result.items.isEmpty else { table.deselectAll(nil); return }
-        let row = min(max(0, row), result.items.count - 1)
+        guard let result, result.count > 0 else { table.deselectAll(nil); return }
+        let row = min(max(0, row), result.count - 1)
         table.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
         if reveal { table.scrollRowToVisible(row) }
     }
     func move(_ delta: Int, repeatKey: Bool = false) {
-        guard let result, !result.items.isEmpty else { return }
+        guard let result, result.count > 0 else { return }
         let target = max(0, selectedRow) + delta
-        if !repeatKey && (target < 0 || target >= result.items.count) { nudge(delta) }
+        if !repeatKey && (target < 0 || target >= result.count) { nudge(delta) }
         select(target, repeatKey: repeatKey)
     }
     func page(_ delta: Int, repeatKey: Bool = false) { select(max(0, selectedRow) + delta * max(1, Int(scroll.contentSize.height / Theme.rowHeight)), repeatKey: repeatKey) }
@@ -335,7 +341,7 @@ final class ResultsView: FlippedView, NSTableViewDataSource, NSTableViewDelegate
         pendingPress = false; pressGeneration += 1
         if let layer = selectionPlate.layer { Theme.Motion.animate(layer, "transform.scale", to: 1, using: Theme.Motion.basic(Theme.Motion.press)) }
     }
-    func numberOfRows(in tableView: NSTableView) -> Int { result?.items.count ?? 0 }
+    func numberOfRows(in tableView: NSTableView) -> Int { result?.count ?? 0 }
     func tableView(_ tableView: NSTableView, rowViewForRow row: Int) -> NSTableRowView? {
         let identifier = NSUserInterfaceItemIdentifier("row")
         let view = tableView.makeView(withIdentifier: identifier, owner: self) as? ResultRow ?? ResultRow(frame: .zero)
@@ -354,7 +360,8 @@ final class ResultsView: FlippedView, NSTableViewDataSource, NSTableViewDelegate
     }
     @objc private func doubleClicked() { if table.clickedRow >= 0 { onOpen?() } }
     func tableView(_ tableView: NSTableView, pasteboardWriterForRow row: Int) -> NSPasteboardWriting? {
-        item(at: row).map { NSURL(fileURLWithPath: $0.path) }
+        guard let item = item(at: row), item.source.isOnline else { return nil }
+        return NSURL(fileURLWithPath: item.path)
     }
     func tableView(_ tableView: NSTableView, draggingSession session: NSDraggingSession, willBeginAt screenPoint: NSPoint, forRowIndexes rowIndexes: IndexSet) {
         dragging = true; hideHover(immediately: true); onDragging?(true)

@@ -54,6 +54,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             self?.localizeMenu()
             self?.appExtension?.languageDidChange(chinese: L10n.chinese)
         }
+        panel.searchController.additionalSources = { [weak self] in self?.appExtension?.searchSources() ?? [] }
+        appExtension?.onSearchSourcesChange = { [weak self] in
+            self?.panel.searchController.sourcesChanged()
+            self?.settingsController?.model.refresh()
+        }
         appExtension?.start(chinese: L10n.chinese, showSettings: { [weak self] in self?.presentSettings() })
         panel.searchController.onSettings = { [weak self] in self?.showSettings() }
         let fullDiskAccess = Permissions.hasFullDiskAccess()

@@ -2,11 +2,11 @@ import Foundation
 import Darwin
 
 public final class IndexStore {
-    public let rootPath: String
+    public internal(set) var rootPath: String
     public let caseSensitiveNames: Bool
     public internal(set) var count: Int, namesLen: Int, altCount: Int, altLen: Int
     public internal(set) var capacity: Int, namesCapacity: Int, altCapacity: Int, altNamesCapacity: Int
-    public let configFingerprint: UInt64
+    public internal(set) var configFingerprint: UInt64
     public var homeIndex: UInt32, deletedCount: UInt32 = 0, liveCount: Int
     public var version: UInt64 = 0, lastEventId: UInt64 = 0, scanFinishedAt: UInt64
     public var coverage = CoverageStats()
@@ -48,6 +48,12 @@ public final class IndexStore {
     }
     public func read<T>(_ body: () throws -> T) rethrows -> T { pthread_rwlock_rdlock(&rwlock); defer { pthread_rwlock_unlock(&rwlock) }; return try body() }
     public func write<T>(_ body: () throws -> T) rethrows -> T { pthread_rwlock_wrlock(&rwlock); defer { pthread_rwlock_unlock(&rwlock) }; return try body() }
+    // Called only on a newly loaded store, before publishing it to readers.
+    internal func rebase(to root: String) {
+        let delta = root.split(separator: "/").count - rootPath.split(separator: "/").count
+        if delta != 0 { for i in 0..<count { depth[i] = UInt8(clamping: Int(depth[i]) + delta) } }
+        rootPath = root
+    }
     public func nameBytes(_ i: UInt32) -> UnsafeBufferPointer<UInt8> {
         let n = Int(i); return UnsafeBufferPointer(start: names.advanced(by: Int(nameOff[n])), count: Int(nameOff[n+1] - nameOff[n]))
     }

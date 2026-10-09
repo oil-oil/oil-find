@@ -123,7 +123,7 @@ enum Snapshot {
         let panel = SearchPanel(snapshot: true)
         panel.appearance = NSAppearance(named: appearance == "dark" ? .darkAqua : .aqua)
         let controller = panel.searchController
-        try controller.prepareSnapshot(state: state, query: values["--query"] ?? "readme", options: SearchOptions(sort: key, ascending: key == .name, kind: kind == 0 ? nil : UInt8(kind)), store: store, selection: selection)
+        try controller.prepareSnapshot(state: state, query: values["--query"] ?? "readme", options: SearchOptions(sort: key, ascending: key == .name, kind: kind == 0 ? nil : UInt8(kind)), store: store, selection: selection, additionalSources: appExtension?.searchSources() ?? [])
         let view = controller.view
         view.frame = NSRect(origin: .zero, size: Theme.panelSize)
         view.layoutSubtreeIfNeeded(); view.displayIfNeeded()
