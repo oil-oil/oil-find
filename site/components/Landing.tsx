@@ -4,6 +4,7 @@ import { TopBar } from './TopBar';
 import { SearchPanel } from './SearchPanel';
 import { SpeedTrace } from './SpeedTrace';
 import { SyntaxSheet } from './SyntaxSheet';
+import { ProSection } from './ProSection';
 import { OpenSource } from './OpenSource';
 import { SiteFooter } from './SiteFooter';
 import { SearchProvider } from './SearchContext';
@@ -24,6 +25,6 @@ export function Landing({ lang }: { lang: Language }) {
       </div>
       <div className={styles.preview}><SearchPanel lang={lang} /></div>
     </section>
-    <SpeedTrace lang={lang} /><SyntaxSheet lang={lang} /><OpenSource lang={lang} />
+    <SpeedTrace lang={lang} /><SyntaxSheet lang={lang} /><OpenSource lang={lang} /><ProSection lang={lang} />
   </SearchProvider></main><SiteFooter lang={lang} /></>;
 }

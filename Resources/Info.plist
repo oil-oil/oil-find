@@ -2,25 +2,46 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleIdentifier</key><string>com.oiloil.find</string>
-    <key>CFBundleName</key><string>Oil Find</string>
-    <key>CFBundleDisplayName</key><string>Oil Find</string>
-    <key>CFBundleExecutable</key><string>OilFind</string>
-    <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>1.3.0</string>
-    <key>CFBundleVersion</key><string>7</string>
-    <key>CFBundleIconFile</key><string>AppIcon</string>
-    <key>LSMinimumSystemVersion</key><string>14.0</string>
-    <key>LSUIElement</key><true/>
-    <key>CFBundleURLTypes</key>
-    <array><dict>
-        <key>CFBundleURLName</key><string>com.oiloil.find</string>
-        <key>CFBundleURLSchemes</key><array><string>oilfind</string></array>
-    </dict></array>
-    <key>NSHighResolutionCapable</key><true/>
-    <key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
-    <key>NSDesktopFolderUsageDescription</key><string>Oil Find 需要读取这里的文件名来建立搜索索引。</string>
-    <key>NSDocumentsFolderUsageDescription</key><string>Oil Find 需要读取这里的文件名来建立搜索索引。</string>
-    <key>NSDownloadsFolderUsageDescription</key><string>Oil Find 需要读取这里的文件名来建立搜索索引。</string>
+	<key>CFBundleDisplayName</key>
+	<string>Oil Find</string>
+	<key>CFBundleExecutable</key>
+	<string>OilFind</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.oiloil.find</string>
+	<key>CFBundleName</key>
+	<string>Oil Find</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.4.0</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.oiloil.find</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>oilfind</string>
+			</array>
+		</dict>
+	</array>
+	<key>CFBundleVersion</key>
+	<string>8</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.utilities</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>14.0</string>
+	<key>LSUIElement</key>
+	<true/>
+	<key>NSDesktopFolderUsageDescription</key>
+	<string>Oil Find 需要读取这里的文件名来建立搜索索引。</string>
+	<key>NSDocumentsFolderUsageDescription</key>
+	<string>Oil Find 需要读取这里的文件名来建立搜索索引。</string>
+	<key>NSDownloadsFolderUsageDescription</key>
+	<string>Oil Find 需要读取这里的文件名来建立搜索索引。</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
 </dict>
 </plist>

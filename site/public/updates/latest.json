@@ -1,17 +1,19 @@
 {
-  "version": "1.3.0",
-  "build": 7,
-  "url": "https://find.oiloil.org/downloads/Oil-Find-1.3.0.zip",
-  "size": 1494712,
-  "sha256": "065f6096780e57b5bef8cdaf08a0164ace8537c9924b27d06286f24d793387c0",
+  "version": "1.4.0",
+  "build": 8,
+  "url": "https://find.oiloil.org/downloads/Oil-Find-1.4.0.zip",
+  "size": 1853953,
+  "sha256": "7fab1cf761b270e524bc7924c44da1c5a0fbf165fb3cc1c5ebee7071786b04e1",
   "minimumSystemVersion": "14.0",
-  "published": "2026-10-06",
+  "published": "2026-10-09",
   "notes": {
     "zh": [
-      "Oil Find 开源了，完全免费，不再需要授权。代码在 GitHub：github.com/oil-oil/oil-find。"
+      "新增 Oil Find Pro：外置磁盘拔掉后也能搜到，还能搜图片里的文字和画面。可以免费试用 7 天，在设置里开始。",
+      "免费版的功能不变，仍然开源。"
     ],
     "en": [
-      "Oil Find is now open source and completely free. No license needed. The code is at github.com/oil-oil/oil-find."
+      "New: Oil Find Pro. External drives stay searchable after you unplug them, and you can search the text and objects in your images. Try it free for 7 days from Settings.",
+      "Everything in the free version stays the same and remains open source."
     ]
   }
 }

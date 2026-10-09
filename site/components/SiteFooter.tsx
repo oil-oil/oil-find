@@ -1,4 +1,4 @@
-import { commonCopy, dict, GITHUB_URL, pagePath, type Language } from '@/content/dict';
+import { commonCopy, dict, proCopy, GITHUB_URL, pagePath, type Language } from '@/content/dict';
 import { changelogTitle } from '@/content/releases';
 
 export function SiteFooter({ lang }: { lang: Language }) {
@@ -10,6 +10,6 @@ export function SiteFooter({ lang }: { lang: Language }) {
       <div><b>{t['note.fda.h']}</b><span>{t['note.fda']}</span></div>
       <div><b>{t['note.privacy.h']}</b><span>{t['note.privacy']}</span></div>
     </div>
-    <div className="legal"><span>{commonCopy.copyright}</span><span className="sp" /><a href={pagePath(lang, 'changelog')}>{changelogTitle[lang]}</a><a href={GITHUB_URL}>{t['legal.github']}</a><a href="/downloads/Oil-Find.zip">{t['legal.download']}</a></div>
+    <div className="legal"><span>{commonCopy.copyright}</span><span className="sp" /><a href={pagePath(lang, 'changelog')}>{changelogTitle[lang]}</a><a href={pagePath(lang, 'pro')}>{proCopy[lang].footer}</a><a href={pagePath(lang, 'recover')}>{proCopy[lang].recover}</a><a href={GITHUB_URL}>{t['legal.github']}</a><a href="/downloads/Oil-Find.zip">{t['legal.download']}</a></div>
   </footer>;
 }

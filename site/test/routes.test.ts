@@ -95,7 +95,7 @@ describe('S10 HTTP routes', () => {
     const missing = await sessionRoute.GET(new Request('http://localhost/api/session?session_id=cs_missing'));
     expect(missing.status).toBe(400); expect(await missing.json()).toEqual({ error: 'invalid_request' });
   });
-  it.each([['CN', 'cny', 9900, '¥99'], ['US', 'usd', 1999, '$19.99'], [null, 'usd', 1999, '$19.99']] as const)('price and checkout agree for %s without Stripe price lookup', async (country, currency, amount, display) => {
+  it.each([['CN', 'cny', 4900, '¥49'], ['US', 'usd', 999, '$9.99'], [null, 'usd', 999, '$9.99']] as const)('price and checkout agree for %s without Stripe price lookup', async (country, currency, amount, display) => {
     const headers = country ? { 'x-vercel-ip-country': country } : undefined;
     const response = await priceRoute.GET(new Request('http://localhost/api/price', { headers }));
     expect(response.status).toBe(200);

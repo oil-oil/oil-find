@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { demoFiles, match, parse } from '@/content/demo';
 import { dict, GITHUB_URL, type Language } from '@/content/dict';
-import { releases } from '@/content/releases';
+import manifest from '@/public/updates/latest.json';
 
 function names(lang: Language, query: string) {
   const parsed = parse(query);
@@ -16,7 +16,7 @@ describe.each(['zh', 'en'] as const)('search demonstration (%s)', lang => {
   });
 
   it('provides the open source action in the demo list', () => {
-    expect(dict[lang].home[0].meta).toBe(releases[0].version);
+    expect(dict[lang].home[0].meta).toBe(manifest.version);
     const item = dict[lang].home.at(-1);
     expect(item?.act.href).toBe(GITHUB_URL);
     expect(item?.meta).toBe('GitHub');

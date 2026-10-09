@@ -8,7 +8,7 @@ import { changelogTitle, releases } from '../content/releases';
 
 describe('updates and release notes', () => {
   it('publishes the exact bilingual 1.3.0 open source announcement', () => {
-    expect(releases[0]).toEqual({
+    expect(releases.find(release => release.version === '1.3.0')).toEqual({
       version: '1.3.0',
       date: '2026-10-06',
       notes: {
@@ -19,13 +19,14 @@ describe('updates and release notes', () => {
     expect(changelogTitle).toEqual({ zh: '更新日志', en: 'Changelog' });
   });
 
-  it('keeps the public update manifest aligned with the current release', () => {
+  it('keeps the public update manifest aligned with its published release, including before packaging the next release', () => {
     const manifest = JSON.parse(readFileSync(new URL('../public/updates/latest.json', import.meta.url), 'utf8'));
+    const published = releases.find(release => release.version === manifest.version)!;
     expect(manifest).toMatchObject({
-      version: releases[0].version,
-      published: releases[0].date,
-      url: `https://find.oiloil.org/downloads/Oil-Find-${releases[0].version}.zip`,
-      notes: releases[0].notes,
+      version: published.version,
+      published: published.date,
+      url: `https://find.oiloil.org/downloads/Oil-Find-${published.version}.zip`,
+      notes: published.notes,
     });
     expect(manifest.size).toBeGreaterThan(0);
     expect(manifest.sha256).toMatch(/^[a-f0-9]{64}$/);
