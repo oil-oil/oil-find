@@ -2,6 +2,16 @@ import AppKit
 import SwiftUI
 import OilFindCore
 
+public struct ApplicationMenuItem {
+    public let title: String
+    public let isVisible: Bool
+    public let action: () -> Void
+
+    public init(title: String, isVisible: Bool = true, action: @escaping () -> Void) {
+        self.title = title; self.isVisible = isVisible; self.action = action
+    }
+}
+
 /// Optional application integration, outside the search and indexing hot paths.
 public protocol ApplicationExtension: AnyObject {
     #if DEBUG
@@ -11,6 +21,8 @@ public protocol ApplicationExtension: AnyObject {
     func searchSources() -> [SearchSource]
     var supplementarySearchProvider: SupplementarySearchProvider? { get }
     var onSearchSourcesChange: (() -> Void)? { get set }
+    var settingsMenuItem: ApplicationMenuItem? { get }
+    var onSettingsMenuItemChange: (() -> Void)? { get set }
     func stop()
     func languageDidChange(chinese: Bool)
     func handle(_ url: URL)
@@ -18,6 +30,8 @@ public protocol ApplicationExtension: AnyObject {
 }
 
 public extension ApplicationExtension {
+    var settingsMenuItem: ApplicationMenuItem? { nil }
+    var onSettingsMenuItemChange: (() -> Void)? { get { nil } set { } }
     var supplementarySearchProvider: SupplementarySearchProvider? { nil }
     func searchSources() -> [SearchSource] { [] }
     var onSearchSourcesChange: (() -> Void)? { get { nil } set { } }

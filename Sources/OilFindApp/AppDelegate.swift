@@ -16,6 +16,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
     private let panel = SearchPanel()
     private var statusItem: NSStatusItem?
+    private var statusMenu: NSMenu?
+    private var settingsItem: NSMenuItem?, extensionItem: NSMenuItem?
     private var localizedMenuItems: [(String, NSMenuItem)] = []
     private var languageObserver: NSObjectProtocol?
     private var hotKey: HotKey?
@@ -50,10 +52,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let modifiers = (defaults.object(forKey: "hotKeyModifiers") as? NSNumber)?.uint32Value ?? UInt32(cmdKey | shiftKey)
         hotKey = HotKey(keyCode: key, modifiers: modifiers) { [weak self] in self?.handleHotKey() }
         buildMenu(keyCode: key, modifiers: modifiers)
-        languageObserver = NotificationCenter.default.addObserver(forName: L10n.changed, object: nil, queue: .main) { [weak self] _ in
-            self?.localizeMenu()
-            self?.appExtension?.languageDidChange(chinese: L10n.chinese)
-        }
         panel.searchController.supplementaryProvider = appExtension?.supplementarySearchProvider
         panel.searchController.additionalSources = { [weak self] in self?.appExtension?.searchSources() ?? [] }
         appExtension?.onSearchSourcesChange = { [weak self] in
@@ -130,14 +128,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         let image = Theme.symbol("magnifyingglass", size: 16, weight: .regular); image.isTemplate = true
         statusItem?.button?.image = image
+        statusItem?.menu = makeMenu(keyCode: keyCode, modifiers: modifiers, hotKeyAvailable: hotKey != nil)
+    }
+    func makeMenu(keyCode: UInt32 = UInt32(kVK_ANSI_F), modifiers: UInt32 = UInt32(cmdKey | shiftKey), hotKeyAvailable: Bool = true) -> NSMenu {
         let menu = NSMenu(); menu.autoenablesItems = false; menu.delegate = self
+        statusMenu = menu
+        localizedMenuItems.removeAll()
+        extensionItem = nil
         func item(_ key: String, _ action: Selector?, _ equivalent: String = "") -> NSMenuItem {
             let value = NSMenuItem(title: L10n.text(key), action: action, keyEquivalent: equivalent)
             value.target = self; value.isEnabled = action != nil; menu.addItem(value)
             localizedMenuItems.append((key, value)); return value
         }
         hotKeyFailureItem = item("menu.hotkeyFailed", nil)
-        hotKeyFailureItem?.isHidden = hotKey != nil
+        hotKeyFailureItem?.isHidden = hotKeyAvailable
         openItem = item("menu.open", #selector(showSearch), Shortcut.keyEquivalent(keyCode))
         openItem?.keyEquivalentModifierMask = HotKey.modifierFlags(modifiers)
         menu.addItem(.separator())
@@ -146,16 +150,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         rescanItem = item("menu.rescan", #selector(rescan))
         menu.addItem(.separator())
         loginItem = item("menu.loginItem", #selector(toggleLogin))
-        _ = item("menu.settings", #selector(showSettings), ",")
+        settingsItem = item("menu.settings", #selector(showSettings), ",")
+        refreshExtensionMenu()
         checkUpdateItem = item("update.check", #selector(checkUpdates))
         updateItem = item("update.check", #selector(presentUpdate))
         refreshUpdateMenu()
         menu.addItem(.separator()); quitItem = item("menu.quit", #selector(quit), "q")
-        statusItem?.menu = menu
+        appExtension?.onSettingsMenuItemChange = { [weak self] in self?.refreshExtensionMenu() }
+        if languageObserver == nil {
+            languageObserver = NotificationCenter.default.addObserver(forName: L10n.changed, object: nil, queue: .main) { [weak self] _ in
+                self?.appExtension?.languageDidChange(chinese: L10n.chinese)
+                self?.localizeMenu()
+            }
+        }
+        return menu
     }
     private func localizeMenu() {
         for (key, item) in localizedMenuItems { item.title = L10n.text(key) }
-        if let menu = statusItem?.menu { menuWillOpen(menu) }
+        if let menu = statusMenu { menuWillOpen(menu) }
         refreshUpdateMenu()
     }
     private func registerHotKey(keyCode: UInt32, modifiers: UInt32) -> Bool {
@@ -187,6 +199,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         settingsController?.present()
     }
     func menuWillOpen(_ menu: NSMenu) {
+        refreshExtensionMenu()
         refreshUpdateMenu()
         if let store = manager?.store { countItem?.title = L10n.text("menu.indexed", Presentation.countText(store.read { store.liveCount })) }
         else { countItem?.title = L10n.text("menu.indexing") }
@@ -194,6 +207,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         rescanItem?.isEnabled = manager?.state == .ready && manager?.isRescanning == false
         loginItem?.state = SMAppService.mainApp.status == .enabled ? .on : .off
     }
+    private func refreshExtensionMenu() {
+        guard let menu = statusMenu, let settingsItem else { return }
+        guard let supplied = appExtension?.settingsMenuItem else {
+            if let extensionItem { menu.removeItem(extensionItem) }
+            extensionItem = nil
+            return
+        }
+        if extensionItem == nil {
+            let item = NSMenuItem(title: supplied.title, action: #selector(performExtensionMenuAction), keyEquivalent: "")
+            item.target = self
+            menu.insertItem(item, at: menu.index(of: settingsItem) + 1)
+            extensionItem = item
+        }
+        extensionItem?.title = supplied.title
+        extensionItem?.isHidden = !supplied.isVisible
+    }
+    @objc private func performExtensionMenuAction() { appExtension?.settingsMenuItem?.action() }
     private func refreshUpdateMenu() {
         let update = UpdateManager.shared
         checkUpdateItem?.isEnabled = update.canCheck

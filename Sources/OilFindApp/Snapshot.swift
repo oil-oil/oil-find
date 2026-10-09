@@ -24,7 +24,7 @@ enum Snapshot {
         defer { L10n.snapshotChinese = nil }
         appExtension?.languageDidChange(chinese: L10n.chinese)
         let state = values["--state"] ?? "results"
-        guard ["results", "recent", "empty", "indexing", "welcome", "toast", "settings", "no-access", "diagnostic", "syntax", "update-available", "update-downloading", "update-failed", "update-latest"].contains(state) else { throw SnapshotError.failed("Invalid state: \(state)") }
+        guard ["results", "recent", "empty", "indexing", "welcome", "toast", "settings", "menu", "no-access", "diagnostic", "syntax", "update-available", "update-downloading", "update-failed", "update-latest"].contains(state) else { throw SnapshotError.failed("Invalid state: \(state)") }
         let appearance = values["--appearance"] ?? "light"
         guard ["light", "dark"].contains(appearance) else { throw SnapshotError.failed("Invalid appearance: \(appearance)") }
         let filter = values["--filter"] ?? "all"
@@ -33,7 +33,7 @@ enum Snapshot {
         let sorts: [String: SortKey] = ["relevance": .relevance, "name": .name, "modified": .modified, "size": .size]
         guard let key = sorts[sort], let selection = Int(values["--select"] ?? "0"), selection >= 0 else { throw SnapshotError.failed("Invalid sort or selected row") }
         var store: IndexStore?
-        if !state.hasPrefix("update-") && !["indexing", "welcome", "settings"].contains(state) || (state == "settings" && values["--db"] != nil) {
+        if !state.hasPrefix("update-") && !["indexing", "welcome", "settings", "menu"].contains(state) || (state == "settings" && values["--db"] != nil) {
             let fallback = NSHomeDirectory() + "/Library/Caches/Oil Find/cli-index.oilfind"
             let defaultPath = FileManager.default.fileExists(atPath: AppDelegate.dbURL.path) ? AppDelegate.dbURL.path : fallback
             let db = NSString(string: values["--db"] ?? defaultPath).expandingTildeInPath
@@ -49,6 +49,22 @@ enum Snapshot {
         }
         let app = NSApplication.shared
         app.setActivationPolicy(.prohibited)
+        if state == "menu" {
+            app.appearance = NSAppearance(named: appearance == "dark" ? .darkAqua : .aqua)
+            let delegate = AppDelegate(appExtension: appExtension)
+            let menu = delegate.makeMenu()
+            guard let screen = NSScreen.main else { throw SnapshotError.failed("Cannot find screen") }
+            let capture = MenuSnapshotCapture(menu: menu, output: output)
+            let timer = Timer(timeInterval: 0.3, target: capture, selector: #selector(MenuSnapshotCapture.capture), userInfo: nil, repeats: false)
+            RunLoop.main.add(timer, forMode: .eventTracking)
+            menu.popUp(positioning: nil, at: NSPoint(x: screen.frame.midX, y: screen.frame.midY), in: nil)
+            timer.invalidate()
+            if let failure = capture.failure { throw failure }
+            guard capture.captured else {
+                throw SnapshotError.failed("Menu closed before capture")
+            }
+            return
+        }
         if state.hasPrefix("update-") {
             var manifest = try UpdateManifest.parse(Data(#"{"version":"1.2.0","build":5,"url":"https://find.oiloil.org/downloads/Oil-Find-1.2.0.zip","size":1,"sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","minimumSystemVersion":"14.0","published":"2026-10-04","notes":{"zh":["应用内检查更新：有新版本时提示，一键下载、校验并重启到新版本。","官网新增更新日志。"],"en":["Built-in updates: Oil Find tells you when a new version is out, then downloads, verifies and restarts into it.","A changelog is now on the website."]}}"#.utf8))
             if let text = values["--update-notes"] {
@@ -161,6 +177,35 @@ enum Snapshot {
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         try png.write(to: url, options: .atomic)
         print("snapshot: \(url.path) \(width)x\(height)")
+    }
+}
+
+private final class MenuSnapshotCapture: NSObject {
+    let menu: NSMenu
+    let output: String
+    private(set) var failure: Error?
+    private(set) var captured = false
+    init(menu: NSMenu, output: String) { self.menu = menu; self.output = output }
+
+    @objc func capture() {
+        defer { menu.cancelTracking() }
+        do {
+            let windows = CGWindowListCopyWindowInfo(.optionOnScreenOnly, kCGNullWindowID) as? [[String: Any]] ?? []
+            guard let info = windows.first(where: {
+                ($0[kCGWindowOwnerPID as String] as? Int32) == ProcessInfo.processInfo.processIdentifier
+                    && ($0[kCGWindowLayer as String] as? Int ?? 0) > 0
+            }), let number = info[kCGWindowNumber as String] as? Int else {
+                throw SnapshotError.failed("Cannot find menu window")
+            }
+            let url = URL(fileURLWithPath: NSString(string: output).expandingTildeInPath)
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            let process = Process(); process.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
+            process.arguments = ["-x", "-o", "-l", String(number), url.path]
+            try process.run(); process.waitUntilExit()
+            guard process.terminationStatus == 0 else { throw SnapshotError.failed("Cannot capture menu window") }
+            captured = true
+            print("snapshot: \(url.path)")
+        } catch { failure = error }
     }
 }
 #endif

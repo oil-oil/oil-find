@@ -9,6 +9,13 @@ export const changelogTitle = { zh: '更新日志', en: 'Changelog' };
 // The single source for the website and the packaged update manifest.
 export const releases: Release[] = [
   {
+    version: '1.4.1', date: '2026-10-09',
+    notes: {
+      zh: ['菜单栏菜单里新增「Oil Find Pro…」，点一下直接打开 Pro 设置。'],
+      en: ['The menu bar menu now has “Oil Find Pro…”, which opens the Pro settings.'],
+    },
+  },
+  {
     version: '1.4.0', date: '2026-10-09',
     notes: {
       zh: ['新增 Oil Find Pro：外置磁盘拔掉后也能搜到，还能搜图片里的文字和画面。可以免费试用 7 天，在设置里开始。', '免费版的功能不变，仍然开源。'],
