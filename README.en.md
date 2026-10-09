@@ -69,6 +69,15 @@ You can paste paths straight from a terminal or editor: `file://` URLs, quoted o
 
 You can also drag results into other apps.
 
+## Oil Find Pro
+
+The free version stays free and open source. Pro is a closed-source paid add-on: $9.99 once (¥49 in mainland China), with a 7-day free trial.
+
+- **External drives**: indexed when you plug them in and still searchable after you unplug them. Results show which drive a file is on.
+- **Image content**: search the text and objects in screenshots, photos and snapped receipts. Everything is recognized on your Mac and never uploaded.
+
+The builds on Releases and the website include Pro; click Start 7-Day Free Trial in Settings to try it. Building from source gives you the free version. See [find.oiloil.org/en/pro](https://find.oiloil.org/en/pro).
+
 ## Install
 
 1. Download `Oil-Find.zip` from [Releases](https://github.com/oil-oil/oil-find/releases/latest), unzip it and drag Oil Find into Applications.
@@ -92,19 +101,20 @@ scripts/build-app.sh   # builds build/Oil Find.app
 scripts/install.sh     # builds and installs into Applications
 ```
 
-Your own builds are ad-hoc signed, so you need to grant Full Disk Access again after each rebuild.
+Building from source gives you the free version, without Pro. Your own builds are ad-hoc signed, so you need to grant Full Disk Access again after each rebuild.
 
 ## Privacy
 
-- Oil Find reads file names, sizes and modification dates only, never file contents.
+- Oil Find reads file names, sizes and modification dates only, never file contents. With Pro image recognition on, it reads images on your Mac to recognize text and objects, and the results stay on your Mac too.
 - The index stays on your Mac in `~/Library/Application Support/Oil Find/`.
-- The only network request is a daily update check. It fetches one version file and sends no device or usage data. You can turn it off in Settings.
+- A daily update check fetches one version file and sends no device or usage data. You can turn it off in Settings.
+- With Pro, the license is verified online once a day. Only the license key, a device identifier and the device name are sent.
 
 ## Current limits
 
 - Apple silicon and macOS 14 or later only.
-- External drives and network volumes aren't indexed yet.
-- File names only; file contents aren't searched.
+- Network volumes aren't supported; external drives need Pro.
+- File names only, not document contents; Pro also searches the text and objects in images.
 
 ## Project layout
 
@@ -112,7 +122,8 @@ Your own builds are ad-hoc signed, so you need to grant Full Disk Access again a
 | --- | --- |
 | `Sources/COilFind` | C: batched directory reads, name comparison, search scoring |
 | `Sources/OilFindCore` | Scanning, indexing, queries, live updates, persistence, app updates |
-| `Sources/OilFind` | The AppKit app and Settings |
+| `Sources/OilFindApp` | The AppKit app and Settings |
+| `Sources/OilFind` | The app's entry point |
 | `Sources/oilfind-cli` | Command-line tool for benchmarks and troubleshooting |
 | `site` | The website, [find.oiloil.org](https://find.oiloil.org/en) |
 

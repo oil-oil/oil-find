@@ -69,6 +69,15 @@ Oil Find 是 macOS 上的文件搜索工具，思路和 Windows 上的 Everythin
 
 结果也可以直接拖到别的应用里。
 
+## Oil Find Pro
+
+免费版一直免费，也一直开源。Pro 是闭源的付费扩展，¥49（其他地区 $9.99）一次买断，可以免费试用 7 天：
+
+- **外置磁盘**：插上就建立索引，拔掉后也能搜到，结果会标出文件在哪块盘上。
+- **图片内容**：搜截图、照片和拍下的单据里的文字与画面，全部在本机识别，不上传。
+
+Releases 和官网的安装包都带 Pro，在设置里点「免费试用 7 天」就能开始；从源码构建得到的是免费版。详见 [find.oiloil.org/pro](https://find.oiloil.org/pro)。
+
 ## 安装
 
 1. 从 [Releases](https://github.com/oil-oil/oil-find/releases/latest) 下载 `Oil-Find.zip`，解压后把 Oil Find 拖进「应用程序」。
@@ -92,19 +101,20 @@ scripts/build-app.sh   # 生成 build/Oil Find.app
 scripts/install.sh     # 构建并安装到「应用程序」
 ```
 
-自己构建的应用使用临时签名，每次重新构建后，需要重新授予一次完全磁盘访问权限。
+从源码构建得到的是免费版，不含 Pro。自己构建的应用使用临时签名，每次重新构建后，需要重新授予一次完全磁盘访问权限。
 
 ## 隐私
 
-- 只读取文件名、大小和修改时间，不读文件内容。
+- 只读取文件名、大小和修改时间，不读文件内容。Pro 开启图片识别后，会在本机读取图片识别文字和画面，结果同样只存在本机。
 - 索引只保存在本机的 `~/Library/Application Support/Oil Find/`。
-- 唯一的联网是每天检查一次新版本：只请求一个版本信息文件，不带任何设备或使用数据，可以在设置里关闭。
+- 每天检查一次新版本：只请求一个版本信息文件，不带任何设备或使用数据，可以在设置里关闭。
+- 使用 Pro 时，授权每天联网校验一次，只发送授权码、设备标识和设备名。
 
 ## 目前的限制
 
 - 只支持 Apple 芯片和 macOS 14 及以上。
-- 外置磁盘和网络卷暂时搜不到。
-- 只搜文件名，不搜文件内容。
+- 网络卷不支持；外置磁盘需要 Pro。
+- 只搜文件名，不搜文档内容；Pro 能搜图片里的文字和画面。
 
 ## 项目结构
 
@@ -112,7 +122,8 @@ scripts/install.sh     # 构建并安装到「应用程序」
 | --- | --- |
 | `Sources/COilFind` | C 代码：批量读取目录、名称比较、搜索评分 |
 | `Sources/OilFindCore` | 扫描、索引、查询、实时更新、持久化、应用更新 |
-| `Sources/OilFind` | AppKit 应用和设置界面 |
+| `Sources/OilFindApp` | AppKit 应用和设置界面 |
+| `Sources/OilFind` | 应用入口 |
 | `Sources/oilfind-cli` | 命令行工具，用来测速和排查问题 |
 | `site` | 官网 [find.oiloil.org](https://find.oiloil.org) |
 

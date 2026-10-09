@@ -54,6 +54,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             self?.localizeMenu()
             self?.appExtension?.languageDidChange(chinese: L10n.chinese)
         }
+        panel.searchController.supplementaryProvider = appExtension?.supplementarySearchProvider
         panel.searchController.additionalSources = { [weak self] in self?.appExtension?.searchSources() ?? [] }
         appExtension?.onSearchSourcesChange = { [weak self] in
             self?.panel.searchController.sourcesChanged()

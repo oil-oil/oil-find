@@ -9,6 +9,7 @@ public protocol ApplicationExtension: AnyObject {
     #endif
     func start(chinese: Bool, showSettings: @escaping () -> Void)
     func searchSources() -> [SearchSource]
+    var supplementarySearchProvider: SupplementarySearchProvider? { get }
     var onSearchSourcesChange: (() -> Void)? { get set }
     func stop()
     func languageDidChange(chinese: Bool)
@@ -17,6 +18,7 @@ public protocol ApplicationExtension: AnyObject {
 }
 
 public extension ApplicationExtension {
+    var supplementarySearchProvider: SupplementarySearchProvider? { nil }
     func searchSources() -> [SearchSource] { [] }
     var onSearchSourcesChange: (() -> Void)? { get { nil } set { } }
 }

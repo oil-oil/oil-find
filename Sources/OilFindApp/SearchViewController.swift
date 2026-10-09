@@ -3,6 +3,8 @@ import Quartz
 import Darwin
 import OilFindCore
 
+private final class SupplementarySearchBox { var hits: [SupplementaryHit] = [] }
+
 private final class SearchGeneration {
     private let lock = NSLock()
     private var value = 0
@@ -33,6 +35,8 @@ final class SearchViewController: NSViewController, NSWindowDelegate, NSMenuDele
     private var selectionAnchor: (sourceID: String, store: IndexStore, id: UInt32, path: String)?
     private var pendingNewSearch: Bool?
     var manager: IndexManager?
+    var supplementaryProvider: SupplementarySearchProvider?
+    private let supplementQueue = DispatchQueue(label: "com.oiloil.find.supplement", qos: .userInteractive)
     var additionalSources: (() -> [SearchSource])?
     private var sourceCaches: [String: SearchCache] = [:]
     private var sourceCacheStores: [String: ObjectIdentifier] = [:]
@@ -41,7 +45,13 @@ final class SearchViewController: NSViewController, NSWindowDelegate, NSMenuDele
         return primary.map { [$0] + (additionalSources?() ?? []) } ?? (additionalSources?() ?? [])
     }
     func sourcesChanged() {
+        supplementaryProvider?.sourcesDidChange(searchSources)
         _ = generation.next(); results.cancelPendingRefresh(); results.cancelPress()
+        if supplementaryProvider?.isEnabled != true, let result = results.result, result.hasSupplements {
+            let base = result.withoutSupplements()
+            let row = results.selectedItem.flatMap { base.index(sourceID: $0.source.id, store: $0.source.store, id: $0.id, path: $0.path) } ?? 0
+            present(base, selection: row, resetScroll: false)
+        }
         // Invalidate displayed actions immediately, including while the panel is hidden.
         if results.selectedItem?.source.isOnline != true { quickLook.close() }
         if let presented = results.result, let multi = presented.multiple {
@@ -161,6 +171,7 @@ final class SearchViewController: NSViewController, NSWindowDelegate, NSMenuDele
         }
     }
     func panelWillShow() {
+        supplementaryProvider?.userActivity(visible: true, typing: false)
         let currentQuery = Query.parse(searchField.text, store: manager?.store)
         if let result = results.result, result.isCurrent(searchSources),
            result.query.raw == currentQuery.raw, !currentQuery.isTimeDependent,
@@ -168,6 +179,7 @@ final class SearchViewController: NSViewController, NSWindowDelegate, NSMenuDele
         startSearch(preserveSelection: true)
     }
     func indexChanged() {
+        supplementaryProvider?.sourcesDidChange(searchSources)
         if view.window?.isVisible == true { refreshSearch() }
     }
     func managerStateChanged(_ state: IndexManager.State) {
@@ -199,13 +211,22 @@ final class SearchViewController: NSViewController, NSWindowDelegate, NSMenuDele
         }
     }
     private func search(refresh: Bool, preserveSelection: Bool) {
+        supplementaryProvider?.userActivity(visible: view.window?.isVisible == true, typing: !refresh && !preserveSelection)
         let token = generation.next()
         let sources = searchSources
         guard let store = sources.first?.store else { refreshProgress(); return }
         var options = filters.options
         if !snapshot { options.pinyin = UserDefaults.standard.bool(forKey: "pinyinEnabled") }
         let query = editingQuery(store: store), previous = results.result
-        let anchor = !refresh && preserveSelection ? selectionAnchor : nil
+        let cancelled = { [generation] in !generation.current(token) }
+        let supplementary = supplementaryProvider?.prepareSearch(query, options: options, sources: sources, isCancelled: cancelled)
+        let group = DispatchGroup()
+        let box = SupplementarySearchBox()
+        if let supplementary {
+            group.enter()
+            supplementQueue.async { box.hits = supplementary(); group.leave() }
+        }
+        let anchor = refresh || preserveSelection ? selectionAnchor : nil
         queue.async { [weak self] in
             guard let self, self.generation.current(token) else { return }
             let found: SearchPresentation
@@ -228,15 +249,30 @@ final class SearchViewController: NSViewController, NSWindowDelegate, NSMenuDele
                 guard let result = MultiSearcher.search(query, options: options, in: sources, previous: previous?.multiple, caches: self.sourceCaches, isCancelled: { !self.generation.current(token) }), self.generation.current(token) else { return }
                 found = SearchPresentation(result)
             }
-            let row = anchor.flatMap { found.index(sourceID: $0.sourceID, store: $0.store, id: $0.id, path: $0.path) } ?? 0
+            let anchoredRow = anchor.flatMap { found.index(sourceID: $0.sourceID, store: $0.store, id: $0.id, path: $0.path) }
+            let row = anchoredRow ?? 0
+            let deferNames = anchor != nil && anchoredRow == nil && supplementary != nil && previous?.query.raw == query.raw
             DispatchQueue.main.async { [weak self] in
                 guard let self, self.generation.current(token) else { return }
                 self.diagnostics = query.diagnostics
+                if deferNames { return }
                 if refresh {
                     self.results.refresh(found)
                 } else {
                     self.pendingNewSearch = nil
                     self.present(found, selection: row, resetScroll: !preserveSelection)
+                }
+            }
+            if supplementary != nil {
+                group.notify(queue: self.queue) { [weak self] in
+                    guard let self, self.generation.current(token) else { return }
+                    if box.hits.isEmpty && !deferNames { return }
+                    let combined = box.hits.isEmpty ? found : found.supplement(box.hits, options: options)
+                    DispatchQueue.main.async { [weak self] in
+                        guard let self, self.generation.current(token), combined.isCurrent(self.searchSources) else { return }
+                        self.pendingNewSearch = nil
+                        self.results.refresh(combined)
+                    }
                 }
             }
         }
@@ -295,6 +331,13 @@ final class SearchViewController: NSViewController, NSWindowDelegate, NSMenuDele
         if state == "indexing" {
             setState(.indexing); indexing.updateCount(1_234_567); searchField.indexing = true
             footer.text = L10n.text("footer.indexing", Presentation.countText(1_234_567)); return
+        }
+        if let store, let supplementaryProvider {
+            let sources = [SearchSource(id: "startup", displayName: "", isOnline: true, store: store)] + additionalSources
+            let query = Query.parse(searchField.text, store: store)
+            let hits = supplementaryProvider.prepareSearch(query, options: options, sources: sources, isCancelled: { false })()
+            guard let found = MultiSearcher.search(query, options: options, in: sources) else { throw SnapshotError.failed("Cannot search snapshot index") }
+            diagnostics = query.diagnostics; present(SearchPresentation(found).supplement(hits, options: options), selection: selection); return
         }
         if let store, !additionalSources.isEmpty, let found = MultiSearcher.search(Query.parse(searchField.text, store: store), options: options, in: [SearchSource(id: "startup", displayName: "", isOnline: true, store: store)] + additionalSources) {
             diagnostics = found.query.diagnostics; present(SearchPresentation(found), selection: selection); return

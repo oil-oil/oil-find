@@ -185,6 +185,23 @@ private final class SearchScratch {
 }
 
 public enum Searcher {
+    /// Evaluate existing query atoms against captured entries under one read lock.
+    /// The callback is synchronous; predicate indexes correspond to the input atoms.
+    public static func withEntryPredicates<T>(_ atoms: [Atom], options: SearchOptions = SearchOptions(), in store: IndexStore,
+                                              isCancelled: @escaping () -> Bool = { false }, _ body: ((Int, UInt32) -> Bool) -> T) -> T {
+        store.read {
+            let query = Query(clauses: atoms.map { Clause(alternatives: [$0]) }, raw: "")
+            let plan = makePlan(query, store: store, pinyin: options.pinyin, preserveOrder: true)
+            let scratch = SearchScratch(streamCount: 0, chunkSize: 0, needsCandidates: false, needsScanOut: false, needsScoreOut: false)
+            return plan.atoms.withUnsafeBufferPointer { pointer in
+                body { ordinal, id in
+                    guard ordinal >= 0, ordinal < pointer.count, Int(id) < store.count, store.isLive(id), !isCancelled() else { return false }
+                    return matchHot(pointer.baseAddress!.advanced(by: ordinal), id: id, plan: plan, options: options, store: store, scratch: scratch, scoreNeeded: false, isCancelled: isCancelled).matched
+                }
+            }
+        }
+    }
+
     public static func search(_ query: Query, options: SearchOptions = SearchOptions(), in store: IndexStore, previous: SearchResult? = nil, isCancelled: () -> Bool = { false }) -> SearchResult? {
         let started = CFAbsoluteTimeGetCurrent()
         return store.read {
@@ -333,10 +350,11 @@ public enum Searcher {
         return SearchResult(store: store, query: query, options: options, items: ids, total: ids.count, sortedCount: ids.count, elapsedMs: (CFAbsoluteTimeGetCurrent()-started)*1000, scores: [])
     }
 
-    private static func makePlan(_ query: Query, store: IndexStore, pinyin: Bool) -> SearchPlan {
+    private static func makePlan(_ query: Query, store: IndexStore, pinyin: Bool, preserveOrder: Bool = false) -> SearchPlan {
         let plan = SearchPlan()
         let rootComponents = store.rootPath.lowercased().split(separator: "/", omittingEmptySubsequences: false).map { Array($0.utf8) }
-        for clause in query.clauses.sorted(by: { !$0.alternatives.contains(where: { $0.negated }) && $1.alternatives.contains(where: { $0.negated }) }) {
+        let clauses = preserveOrder ? query.clauses : query.clauses.sorted(by: { !$0.alternatives.contains(where: { $0.negated }) && $1.alternatives.contains(where: { $0.negated }) })
+        for clause in clauses {
             let start = plan.atoms.count
             for atom in clause.alternatives {
                 var hot = HotAtom(tag: .name, negated: atom.negated)

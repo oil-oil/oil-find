@@ -3,6 +3,7 @@ import QuartzCore
 import OilFindCore
 
 struct ResultItem {
+    let detail: SupplementaryHit?
     let id: UInt32
     let source: SearchSource
     let name: String, parentPath: String, path: String
@@ -16,21 +17,27 @@ private final class ResultRow: NSTableRowView {
     override func drawSelection(in dirtyRect: NSRect) {}
 }
 
-private final class ResultCell: NSTableCellView {
+final class ResultCell: NSTableCellView {
     override var isFlipped: Bool { true }
     override var backgroundStyle: NSView.BackgroundStyle { get { .normal } set {} }
     private let icon = NSImageView()
     private let nameLabel = Theme.label(13.5, .medium, .labelColor)
+    private let detailLabel = Theme.label(11.5, .regular, .secondaryLabelColor)
     private let pathLabel = Theme.label(11.5, .regular, .secondaryLabelColor)
     private let dateLabel = Theme.label(11.5, .regular, .secondaryLabelColor)
     private let sizeLabel = Theme.label(11.5, .regular, .tertiaryLabelColor)
-    private var displayedPath = ""
+    private var configuration = 0
+    private var displayingThumbnail = false
     override init(frame: NSRect) {
         super.init(frame: frame)
         pathLabel.lineBreakMode = .byTruncatingMiddle
+        detailLabel.lineBreakMode = .byClipping
+        icon.imageScaling = .scaleProportionallyUpOrDown
+        icon.imageAlignment = .alignCenter
+        icon.wantsLayer = true
         dateLabel.alignment = .right; sizeLabel.alignment = .right
         sizeLabel.font = .monospacedDigitSystemFont(ofSize: 11.5, weight: .regular)
-        [icon, nameLabel, pathLabel, dateLabel, sizeLabel].forEach(addSubview)
+        [icon, nameLabel, detailLabel, pathLabel, dateLabel, sizeLabel].forEach(addSubview)
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
     override func layout() {
@@ -38,24 +45,60 @@ private final class ResultCell: NSTableCellView {
         icon.frame = NSRect(x: 26, y: 9, width: 32, height: 32)
         let width = max(0, bounds.width - 236)
         nameLabel.frame = NSRect(x: 70, y: 8, width: width, height: 18)
-        pathLabel.frame = NSRect(x: 70, y: 27, width: width, height: 15)
+        let detailWidth = detailLabel.isHidden ? 0 : ceil(detailLabel.attributedStringValue.size().width)
+        detailLabel.frame = NSRect(x: 70, y: 27, width: detailWidth, height: 15)
+        pathLabel.frame = NSRect(x: 70 + detailWidth, y: 27, width: max(0, width - detailWidth), height: 15)
         dateLabel.frame = NSRect(x: bounds.width - 150, y: 9, width: 124, height: 16)
         sizeLabel.frame = NSRect(x: bounds.width - 150, y: 27, width: 124, height: 15)
     }
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        updateThumbnailStyle()
+    }
+    private func updateThumbnailStyle() {
+        icon.layer?.cornerRadius = displayingThumbnail ? 3 : 0
+        icon.layer?.masksToBounds = displayingThumbnail
+        icon.layer?.borderWidth = displayingThumbnail ? 0.5 : 0
+        effectiveAppearance.performAsCurrentDrawingAppearance {
+            icon.layer?.borderColor = NSColor.separatorColor.cgColor
+            icon.layer?.backgroundColor = (displayingThumbnail ? NSColor.quaternaryLabelColor.withAlphaComponent(0.08) : NSColor.clear).cgColor
+        }
+    }
     func configure(_ item: ResultItem, query: Query, icons: IconProvider) {
-        displayedPath = item.path
+        configuration += 1
+        let token = configuration
+        displayingThumbnail = false
+        updateThumbnailStyle()
         let name = NSMutableAttributedString(string: item.name, attributes: [.font: nameLabel.font!, .foregroundColor: item.source.isOnline ? NSColor.labelColor : NSColor.tertiaryLabelColor])
         for range in item.source.isOnline ? Presentation.highlightRanges(name: item.name, query: query) : [] {
             name.addAttributes([.foregroundColor: NSColor.controlAccentColor, .font: NSFont.systemFont(ofSize: 13.5, weight: .semibold)], range: range)
         }
         nameLabel.attributedStringValue = name
         pathLabel.stringValue = Presentation.abbreviate(path: item.parentPath, home: NSHomeDirectory()) + (item.source.isOnline ? "" : " · " + L10n.text("source.offline"))
+        detailLabel.isHidden = item.detail == nil
+        detailLabel.stringValue = ""
+        if let detail = item.detail {
+            let decoration = detail.presentation
+            let text = NSMutableAttributedString(string: decoration.text + " · ", attributes: [.font: detailLabel.font!, .foregroundColor: NSColor.secondaryLabelColor])
+            for range in decoration.highlights where NSMaxRange(range) <= text.length { text.addAttribute(.foregroundColor, value: NSColor.controlAccentColor, range: range) }
+            detailLabel.attributedStringValue = text
+        }
         dateLabel.stringValue = Presentation.dateText(item.modified, now: Date(), calendar: .current, chinese: L10n.chinese)
         sizeLabel.stringValue = item.kind == 2 ? L10n.text("meta.app") : item.flags & SiftFlag.dir != 0 && item.flags & SiftFlag.package == 0 ? L10n.text("meta.folder") : Presentation.sizeText(item.size)
         toolTip = item.path
         icon.image = icons.icon(name: item.name, path: item.path, flags: item.flags, kind: item.kind, resolveFileIcon: item.source.isOnline) { [weak self] image in
-            if self?.displayedPath == item.path { self?.icon.image = image }
+            guard let self, self.configuration == token, !self.displayingThumbnail else { return }
+            self.icon.image = image
         }
+        if item.detail?.thumbnail == true && item.source.isOnline {
+            icons.thumbnail(path: item.path, modified: item.modified) { [weak self] image in
+                guard let self, self.configuration == token else { return }
+                self.icon.image = image
+                self.displayingThumbnail = true
+                self.updateThumbnailStyle()
+            }
+        }
+        needsLayout = true
     }
 }
 
@@ -283,7 +326,7 @@ final class ResultsView: FlippedView, NSTableViewDataSource, NSTableViewDelegate
         return store.read {
             guard Int(id) < store.count, store.isLive(id) else { return nil }
             let name = store.name(id), parent = store.parentPath(id)
-            return ResultItem(id: id, source: source, name: name, parentPath: parent, path: parent == "/" ? "/" + name : parent + "/" + name,
+            return ResultItem(detail: result.detail(at: row), id: id, source: source, name: name, parentPath: parent, path: parent == "/" ? "/" + name : parent + "/" + name,
                               size: store.size(id), modified: store.modified(id), flags: store.flags[Int(id)], kind: store.kind[Int(id)])
         }
     }
