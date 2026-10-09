@@ -9,6 +9,11 @@ enum AppLog {
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+    private let appExtension: ApplicationExtension?
+    init(appExtension: ApplicationExtension? = nil) {
+        self.appExtension = appExtension
+        super.init()
+    }
     private let panel = SearchPanel()
     private var statusItem: NSStatusItem?
     private var localizedMenuItems: [(String, NSMenuItem)] = []
@@ -45,7 +50,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let modifiers = (defaults.object(forKey: "hotKeyModifiers") as? NSNumber)?.uint32Value ?? UInt32(cmdKey | shiftKey)
         hotKey = HotKey(keyCode: key, modifiers: modifiers) { [weak self] in self?.handleHotKey() }
         buildMenu(keyCode: key, modifiers: modifiers)
-        languageObserver = NotificationCenter.default.addObserver(forName: L10n.changed, object: nil, queue: .main) { [weak self] _ in self?.localizeMenu() }
+        languageObserver = NotificationCenter.default.addObserver(forName: L10n.changed, object: nil, queue: .main) { [weak self] _ in
+            self?.localizeMenu()
+            self?.appExtension?.languageDidChange(chinese: L10n.chinese)
+        }
+        appExtension?.start(chinese: L10n.chinese, showSettings: { [weak self] in self?.presentSettings() })
         panel.searchController.onSettings = { [weak self] in self?.showSettings() }
         let fullDiskAccess = Permissions.hasFullDiskAccess()
         var state = WelcomeState(didFinishOnboarding: defaults.bool(forKey: "didFinishOnboarding"), skippedFullDiskAccess: defaults.bool(forKey: "skippedFullDiskAccess"), granted: fullDiskAccess)
@@ -167,7 +176,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 self.manager?.updateConfig(SettingsPreferences.indexConfig(limited: self.limited))
             }
             model.onPinyinChange = { [weak self] in self?.panel.searchController.startSearch(preserveSelection: true) }
-            settingsController = SettingsWindowController(model: model)
+            settingsController = SettingsWindowController(model: model, appExtension: appExtension)
         }
         settingsController?.present()
     }
@@ -214,6 +223,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         UpdateManager.shared.preventsTermination ? .terminateCancel : .terminateNow
     }
-    func applicationWillTerminate(_ notification: Notification) { if !secondaryInstance { UpdateManager.shared.stop() }; settingsController?.model.stopRefreshing(); permissionTimer?.invalidate(); hotKey?.unregister(); manager?.stop() }
+    func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls { appExtension?.handle(url) }
+    }
+    func applicationWillTerminate(_ notification: Notification) { if !secondaryInstance { appExtension?.stop(); UpdateManager.shared.stop() }; settingsController?.model.stopRefreshing(); permissionTimer?.invalidate(); hotKey?.unregister(); manager?.stop() }
     deinit { if let languageObserver { NotificationCenter.default.removeObserver(languageObserver) } }
 }

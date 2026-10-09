@@ -4,6 +4,30 @@ set -euo pipefail
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_DIR"
 
+# Official updates always include the optional private application library.
+if [[ ! -d Pro/Sources ]]; then
+    printf '%s\n' 'Packaging requires the private Pro repository.' >&2
+    exit 1
+fi
+if [[ -n "${OILFIND_FREE+x}" ]]; then
+    printf '%s\n' 'Packaging refuses OILFIND_FREE; unset it to include Pro.' >&2
+    exit 1
+fi
+if ! python3 - <<'PYKEY'
+from pathlib import Path
+import re
+config = next(Path('Pro/Sources').glob('*/License/LicenseConfig.swift'), None)
+if config is None:
+    raise SystemExit('Packaging requires the private Pro authorization sources.')
+source = config.read_text()
+key = re.search(r'static let productionPublicKey = "([^"]*)"', source)
+if not key or not key.group(1):
+    raise SystemExit('Packaging requires the new production authorization public key (M23).')
+PYKEY
+then
+    exit 1
+fi
+
 # Every update must satisfy the preceding release's certificate requirement.
 if ! security find-identity -v -p codesigning | grep -q '"Oil Find Self-Signed"'; then
     printf '%s\n' 'Packaging requires the existing "Oil Find Self-Signed" identity.' >&2

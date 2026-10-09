@@ -59,8 +59,20 @@ elif args[0] == 'write':
         self.assertIn(["security", "delete-generic-password", "-s", "com.oiloil.find.trial"], calls)
         self.assertEqual(sum(call[0] == "rm" for call in calls), 1)
 
+    def test_default_preserves_both_pro_anchors_and_purge_removes_them(self):
+        initial = {"proEvaluationStartedAt": 1790000000.5, "proEvaluationLastSeenAt": 1790003600.75,
+                   "proEvaluationEndedAt": 1790003600.75, "pinyinEnabled": True}
+        result, values, calls = self.run_uninstall(initial=initial)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(values, {key: value for key, value in initial.items() if key.startswith("proEvaluation")})
+        self.assertNotIn(["security", "delete-generic-password", "-s", "com.oiloil.find.pro.evaluation"], calls)
+        result, values, calls = self.run_uninstall(("--purge",), initial)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(values, {})
+        self.assertIn(["security", "delete-generic-password", "-s", "com.oiloil.find.pro.evaluation"], calls)
+
     def test_decline_and_invalid_arguments_do_not_mutate_anything(self):
-        for arguments, answer, status in [((), "n\n", 0), (("--invalid",), "y\n", 2), (("--purge",), "y\n", 2)]:
+        for arguments, answer, status in [((), "n\n", 0), (("--invalid",), "y\n", 2), (("--purge", "extra"), "y\n", 2)]:
             result, values, calls = self.run_uninstall(arguments, {"trialStartedAt": 1, "pinyinEnabled": True}, answer)
             self.assertEqual(result.returncode, status)
             self.assertEqual(values, {"trialStartedAt": 1, "pinyinEnabled": True})

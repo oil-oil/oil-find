@@ -2,7 +2,7 @@ import AppKit
 import QuartzCore
 import XCTest
 import OilFindCore
-@testable import OilFind
+@testable import OilFindApp
 
 final class ResultsSelectionTests: XCTestCase {
     func testPointerSelectionSnapsAndKeyboardSelectionKeepsMotion() throws {

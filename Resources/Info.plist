@@ -12,6 +12,11 @@
     <key>CFBundleIconFile</key><string>AppIcon</string>
     <key>LSMinimumSystemVersion</key><string>14.0</string>
     <key>LSUIElement</key><true/>
+    <key>CFBundleURLTypes</key>
+    <array><dict>
+        <key>CFBundleURLName</key><string>com.oiloil.find</string>
+        <key>CFBundleURLSchemes</key><array><string>oilfind</string></array>
+    </dict></array>
     <key>NSHighResolutionCapable</key><true/>
     <key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
     <key>NSDesktopFolderUsageDescription</key><string>Oil Find 需要读取这里的文件名来建立搜索索引。</string>

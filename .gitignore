@@ -14,3 +14,4 @@ site/next-env.d.ts
 *.log
 __pycache__/
 *.pyc
+/Pro/

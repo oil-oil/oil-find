@@ -11,7 +11,7 @@
 | 内存 | 平均每条目 ≤ 70 字节（含哈希表） |
 | 交互 | ⇧⌘F 唤起，面板在屏幕正中，键盘即可完成全部操作 |
 
-不做的事：文件内容搜索、网络卷与外接磁盘索引、沙盒化上架。
+免费核心提供文件名与路径搜索。网络卷与沙盒化上架不在当前范围；可选私有扩展的产品能力由其独立仓库定义。
 
 ## 工程结构
 
@@ -38,7 +38,8 @@ oil-find/
       Coverage.swift       未覆盖统计与单路径检查
       SearchCache.swift    增量收窄与结果缓存
       Update/              版本检查、下载、校验与安装
-    OilFind/                  AppKit 应用、语言管理与 SwiftUI 设置
+    OilFindApp/               应用库：AppKit、语言管理、SwiftUI 设置与中性扩展点
+    OilFind/main.swift        可执行应用的组装入口
     oilfind-cli/              命令行工具，用于验证引擎
   Tests/OilFindCoreTests/
   Tests/OilFindUITests/
@@ -50,7 +51,17 @@ oil-find/
   docs/
 ```
 
-`Package.swift`：`swift-tools-version:5.10`，`platforms: [.macOS(.v14)]`，四个 target（`COilFind`、`OilFindCore`、`OilFind`、`oilfind-cli`）加两个测试 target（核心引擎与应用界面）。应用 bundle id 为 `com.oiloil.find`。
+`Package.swift`：`swift-tools-version:5.10`，`platforms: [.macOS(.v14)]`。公开 target 为 `COilFind`、`OilFindCore`、`OilFindApp`（library）、`OilFind`（executable）与 `oilfind-cli`，另有核心与应用界面两个测试 target；应用界面测试依赖 `OilFindApp`。应用 bundle id 为 `com.oiloil.find`。
+
+## 开放核心与应用扩展
+
+`Pro/` 是可选的独立私有仓库，不在本公开仓库内，公开 Git 通过 `/Pro/` 忽略它。manifest 用 `Context.packageDirectory` 检测私有模块目录，并通过 `Context.environment` 读取 `OILFIND_FREE=1`，决定是否加入私有 target 与其测试。没有私有模块或显式设置该变量时构建免费版；免费目标的编译标记防止旧构建缓存中的模块影响条件导入。
+
+依赖方向是私有扩展依赖公开应用库与核心。公开库不得依赖或引用私有模块；只有 `Package.swift` 与 `Sources/OilFind/main.swift` 可以提及私有 target。入口只导入模块并调用 `Application.run`，根据构建条件传入可选扩展。
+
+`ApplicationExtension` 提供启动、退出、设置分区、URL 和语言五类中性接口；DEBUG 下另有参数预处理方法，让扩展解析并移除自己的调试参数。应用库不理解私有功能状态。扩展设置分区放在「索引范围」之后、「排除的文件夹」之前；语言变化即时传递，URL 交给扩展处理，无扩展时无操作。扩展调用不进入扫描或搜索热路径。
+
+免费版验证使用 `OILFIND_FREE=1 swift build` 与按需筛选的 `swift test`。`Tests/Scripts/test_open_core.py` 检查公开 Git 未追踪 Pro 文件、代码中的私有 target 名称只出现在 manifest 和组装入口，并在 CI 执行。
 
 ## 索引存储 IndexStore
 
@@ -243,15 +254,15 @@ playground xcarchive dsym rtfd scptd lproj logicx band screenstudio pages number
 
 替换后启动分离的等待进程，以位置参数传入路径，等待当前进程退出再用 `open -n -W` 打开原位置的新应用；当前进程正常退出时仍执行索引保存。新进程尽早记录 PID，启动完成后按匹配目标路径、版本和 build 的收据写入独立的 `launch-confirmed` 标记，等待进程收到确认后删除备份与临时目录。清理失败不影响已确认启动的新应用，下次启动再清理。等待进程启动失败时应用还原旧包；`open` 失败、新进程提前退出或 60 秒内没有启动确认时，等待进程停止未完成启动的新进程，还原并重开旧包。旧包按失败标记显示原因并清理临时目录。下载与校验失败清理临时文件，替换失败保留可用应用与必要备份。
 
-`UpdateManager` 在主线程拥有检查、可更新、下载、安装、最新和失败状态；网络与安装不阻塞界面，重复操作在处理中禁用。下载与安装期间禁止提前退出，启动等待进程后才允许正常退出；下载文件在退出前显式清理，不依赖异步任务的 defer。菜单显示可用版本与下载进度，更新窗口复用同一状态，设置通用区域提供自动检查开关、提示、手动检查和当前版本。双语界面文案集中在 `Sources/OilFind/L10n.swift`。
+`UpdateManager` 在主线程拥有检查、可更新、下载、安装、最新和失败状态；网络与安装不阻塞界面，重复操作在处理中禁用。下载与安装期间禁止提前退出，启动等待进程后才允许正常退出；下载文件在退出前显式清理，不依赖异步任务的 defer。菜单显示可用版本与下载进度，更新窗口复用同一状态，设置通用区域提供自动检查开关、提示、手动检查和当前版本。双语界面文案集中在 `Sources/OilFindApp/L10n.swift`。
 
 
 ## 应用与官网
 
-Oil Find 是 MIT 许可证下的免费开源软件，搜索始终可用。应用不包含试用、付款、激活、设备身份或授权网络请求。启动时静默尽力删除旧版授权文件、偏好与试用钥匙串项，失败不影响使用。
+Oil Find 的公开核心与应用库使用 MIT 许可证，免费搜索始终可用。公开应用库不包含私有产品状态、设备身份或授权网络请求，可选功能通过 ApplicationExtension 接入。旧版授权清理启动时静默尽力执行一次，失败不影响免费功能。
 
-`AppLanguage` 管理系统默认、简体中文和英文三种语言选择；语言偏好保存在 UserDefaults，`L10n.swift` 是应用界面文案的唯一来源。语言变化通知搜索面板、菜单、欢迎页、设置及更新窗口即时重新显示文案。
+`AppLanguage` 管理系统默认、简体中文和英文三种语言选择；语言偏好保存在 UserDefaults，`Sources/OilFindApp/L10n.swift` 是免费应用界面文案的唯一来源。语言变化通知搜索面板、菜单、欢迎页、设置及更新窗口即时重新显示文案。
 
-`site/` 是 Next.js App Router、React 和 TypeScript 官网，使用 pnpm 开发，运行时依赖只有 `next`、`react`、`react-dom`。中文首页为 `/`，英文首页为 `/en`；首页包含可交互的搜索演示、下载与 GitHub 链接、开源区块。更新日志位于 `/changelog` 与 `/en/changelog`。旧 `/activated`、`/recover` 及对应英文路径永久重定向到各自语言首页。官网没有付款或授权接口，本地开发不需要环境变量。
+`site/` 是 Next.js App Router、React 和 TypeScript 官网，使用 pnpm 开发，运行时依赖为 `next`、`react`、`react-dom`、`stripe`；Stripe SDK 用于官网授权接口。npm 与 pnpm 锁文件保持一致。中文首页为 `/`，英文首页为 `/en`，更新日志位于 `/changelog` 与 `/en/changelog`。官网的授权相关页面与接口由官网任务维护，公开应用库不依赖其内部实现。
 
 版本与 build 来自 `Resources/Info.plist`。`scripts/build-app.sh --debug` 打包的调试版提供 `--snapshot` 界面快照；正式版没有该入口。正式版在签名前移除包含本机源码路径的调试符号；调试版保留调试信息。`scripts/package.sh` 生成版本安装包、通用下载包与更新清单，不执行部署。

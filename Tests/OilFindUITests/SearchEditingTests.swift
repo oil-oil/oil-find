@@ -1,7 +1,7 @@
 import AppKit
 import XCTest
 import OilFindCore
-@testable import OilFind
+@testable import OilFindApp
 
 final class SearchEditingTests: XCTestCase {
     private func event(_ character: String, code: UInt16, in window: NSWindow,

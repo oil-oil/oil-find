@@ -232,6 +232,7 @@ private struct LanguagePicker: NSViewRepresentable {
 
 private struct SettingsForm: View {
     @ObservedObject var model: SettingsModel
+    var appExtension: ApplicationExtension?
     var window: () -> NSWindow?
     var body: some View {
         Form {
@@ -308,6 +309,7 @@ private struct SettingsForm: View {
                 scopeRow("system", key: "indexSystemDirs", enabled: model.indexSystemDirs)
             } header: { Text(L10n.text("settings.scope")) }
               footer: { hint(L10n.text("settings.scopeHint")) }
+            if let appExtension { appExtension.settingsSection(window: window) }
             Section {
                 if model.excludedPaths.isEmpty { Text(L10n.text("settings.noExcluded")).foregroundStyle(.secondary) }
                 ForEach(model.excludedPaths, id: \.self) { path in
@@ -402,20 +404,30 @@ final class SettingsWindow: NSWindow {
     weak var settingsModel: SettingsModel?
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         // The accessory app has no Edit menu to dispatch field-editor commands.
+        if event.modifierFlags.intersection([.command, .control, .option, .shift]) == .command,
+           let editor = firstResponder as? NSTextView, editor.isFieldEditor, !editor.hasMarkedText() {
+            switch event.charactersIgnoringModifiers?.lowercased() {
+            case "a": editor.selectAll(nil); return true
+            case "c": editor.copy(nil); return true
+            case "x": editor.cut(nil); return true
+            case "v": editor.paste(nil); return true
+            default: break
+            }
+        }
         return super.performKeyEquivalent(with: event)
     }
 }
 
 final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     let model: SettingsModel
-    init(model: SettingsModel) {
+    init(model: SettingsModel, appExtension: ApplicationExtension? = nil) {
         self.model = model
         let window = SettingsWindow(contentRect: NSRect(x: 0, y: 0, width: 540, height: model.contentHeight), styleMask: [.titled, .closable], backing: .buffered, defer: false)
         window.settingsModel = model
         window.title = L10n.text("settings.title"); window.isReleasedWhenClosed = false
         super.init(window: window)
         window.delegate = self
-        window.contentViewController = NSHostingController(rootView: SettingsForm(model: model, window: { [weak window] in window }))
+        window.contentViewController = NSHostingController(rootView: SettingsForm(model: model, appExtension: appExtension, window: { [weak window] in window }))
         model.onContentChange = { [weak self] in self?.resizeToContent() }
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }

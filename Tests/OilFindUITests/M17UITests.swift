@@ -1,7 +1,7 @@
 import AppKit
 import XCTest
 import OilFindCore
-@testable import OilFind
+@testable import OilFindApp
 
 final class M17UITests: XCTestCase {
     func testSyntaxShortcutEscapeAndExamplePreserveSearchInput() {

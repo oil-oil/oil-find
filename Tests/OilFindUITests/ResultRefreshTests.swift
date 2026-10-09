@@ -1,5 +1,5 @@
 import XCTest
-@testable import OilFind
+@testable import OilFindApp
 
 final class ResultRefreshTests: XCTestCase {
     func testIdenticalItemsKeepSelectionAndViewport() {

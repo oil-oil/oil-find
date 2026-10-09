@@ -3,6 +3,7 @@ import LocalAuthentication
 import Security
 
 enum LegacyAuthorizationCleanup {
+    static let completedKey = "legacyAuthorizationCleanupCompleted"
     static let keychainService = "com.oiloil.find.trial"
     private static let exactDefaultsKeys = ["trialStartedAt", "trialLastSeenAt", "licenseAPI", "deviceFallbackID"]
 
@@ -16,6 +17,7 @@ enum LegacyAuthorizationCleanup {
         defaults: UserDefaults = .standard,
         deleteKeychainItem: () -> Void = deleteLegacyTrialKeychainItem
     ) {
+        guard !defaults.bool(forKey: completedKey) else { return }
         try? FileManager.default.removeItem(at: licenseFile)
 
         let keys = Set(defaults.dictionaryRepresentation().keys)
@@ -28,6 +30,7 @@ enum LegacyAuthorizationCleanup {
         authorizationKeys.forEach(defaults.removeObject(forKey:))
 
         deleteKeychainItem()
+        defaults.set(true, forKey: completedKey)
     }
 
     private static func deleteLegacyTrialKeychainItem() {

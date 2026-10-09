@@ -178,17 +178,40 @@ export const dict: Record<Language, LandingCopy> = {
   },
 };
 
-export type SitePage = 'home' | 'changelog';
+export type SitePage = 'home' | 'activated' | 'recover' | 'changelog';
 export function pagePath(lang: Language, page: SitePage = 'home'): string {
   const prefix = lang === 'en' ? '/en' : '';
-  return page === 'home' ? prefix || '/' : prefix + '/changelog';
+  return page === 'home' ? prefix || '/' : prefix + '/' + page;
 }
+
+export const activatedCopy = {
+  zh: { title: '购买完成 · Oil Find Pro', 'ok.h': '感谢购买 Oil Find Pro', 'ok.p': '点下面的按钮，Oil Find 会直接激活 Pro。也可以把授权码粘贴到 Oil Find 设置里的 Pro 分区。', 'ok.cta': '在 Oil Find 中激活', 'ok.copy': '拷贝', copied: '已拷贝',
+        'ok.install': '还没装 Oil Find？', 'ok.download': '下载 macOS 版', mailed: (email: string) => `授权码也发到了 ${email}。一个授权可以在 3 台 Mac 上使用。`, notMailed: '把授权码存好。一个授权可以在 3 台 Mac 上使用。',
+        'fail.h': '没有找到这笔订单', 'fail.p': '如果已经购买 Oil Find Pro，可以用购买时的邮箱找回授权码。', 'fail.cta': '找回授权码', 'fail.home': '回到首页' },
+  en: { title: 'Purchase complete · Oil Find Pro', 'ok.h': 'Thanks for buying Oil Find Pro', 'ok.p': 'Click the button below and Oil Find activates Pro right away. You can also paste the key into the Pro section of Oil Find’s settings.', 'ok.cta': 'Activate in Oil Find', 'ok.copy': 'Copy', copied: 'Copied',
+        'ok.install': 'Don’t have Oil Find yet?', 'ok.download': 'Download for macOS', mailed: (email: string) => `The key was also sent to ${email}. One license works on up to 3 Macs.`, notMailed: 'Keep this key somewhere safe. One license works on up to 3 Macs.',
+        'fail.h': 'We couldn’t find this order', 'fail.p': 'If you bought Oil Find Pro, recover your key with the email you used at checkout.', 'fail.cta': 'Recover license key', 'fail.home': 'Back to home' },
+};
+
+export const recoverCopy = {
+  zh: { title: '找回授权码 · Oil Find Pro', h: '找回 Oil Find Pro 授权码', p: '填购买时用的邮箱，授权码会重新发过去。', cta: '发送授权码', sending: '正在发送…',
+        invalid: '这个邮箱地址看起来不对。', offline: '没发出去，请检查网络后重试。',
+        unconfigured: '现在没法自动找回。回复购买时收到的 Stripe 收据邮件，我们会把授权码发给你。',
+        'sent.h': '去邮箱看看', sent: (email: string) => `如果 ${email} 买过 Oil Find Pro，授权码已经发出。没收到的话，看一下垃圾邮件。`, 'sent.again': '换一个邮箱' },
+  en: { title: 'Recover license key · Oil Find Pro', h: 'Recover your Oil Find Pro license key', p: 'Enter the email you used at checkout and we’ll send the key again.', cta: 'Send license key', sending: 'Sending…',
+        invalid: 'That email address doesn’t look right.', offline: 'Couldn’t send. Check your connection and try again.',
+        unconfigured: 'Automatic recovery isn’t available right now. Reply to the Stripe receipt you got at checkout and we’ll send your key.',
+        'sent.h': 'Check your inbox', sent: (email: string) => `If ${email} has bought Oil Find Pro, the key is on its way. If it doesn’t arrive, check your spam folder.`, 'sent.again': 'Use a different email' },
+};
 
 export const commonCopy = {
   brand: 'Oil Find',
   copyright: '© 2026 Oil Find',
   shortcutLabel: 'Shift Command F',
   searchLabel: 'Search',
+  loadingLabel: 'Loading',
+  emailLabel: 'Email',
+  emailPlaceholder: 'you@example.com',
   ogDescription: '不到 10 毫秒，找到 Mac 上的任何文件。',
   stats: [['3.3', 's', 'stat.scan'], ['45', 'MB', 'stat.mem'], ['< 1', 's', 'stat.live']],
 } as const;

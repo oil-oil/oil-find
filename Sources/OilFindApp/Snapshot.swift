@@ -8,7 +8,7 @@ enum SnapshotError: Error, CustomStringConvertible {
 
 #if DEBUG
 enum Snapshot {
-    static func run(_ arguments: [String]) throws {
+    static func run(_ arguments: [String], appExtension: ApplicationExtension? = nil) throws {
         let allowed = Set(["--snapshot", "--state", "--query", "--filter", "--sort", "--select", "--appearance", "--db", "--settings-scroll", "--language", "--coverage", "--update-notes", "--update-scroll"])
         var values: [String: String] = [:], i = 0, granted = false
         while i < arguments.count {
@@ -22,6 +22,7 @@ enum Snapshot {
             L10n.snapshotChinese = language == "zh"
         }
         defer { L10n.snapshotChinese = nil }
+        appExtension?.languageDidChange(chinese: L10n.chinese)
         let state = values["--state"] ?? "results"
         guard ["results", "recent", "empty", "indexing", "welcome", "toast", "settings", "no-access", "diagnostic", "syntax", "update-available", "update-downloading", "update-failed", "update-latest"].contains(state) else { throw SnapshotError.failed("Invalid state: \(state)") }
         let appearance = values["--appearance"] ?? "light"
@@ -96,7 +97,7 @@ enum Snapshot {
         if state == "settings" {
             let model = SettingsModel(snapshotStore: store, snapshot: true)
             if values["--coverage"] == "sample" { model.expandedCoverage = ["noAccess", "scope"] }
-            let controller = SettingsWindowController(model: model)
+            let controller = SettingsWindowController(model: model, appExtension: appExtension)
             guard let window = controller.window, let view = window.contentView else { throw SnapshotError.failed("Cannot create settings view") }
             window.appearance = NSAppearance(named: appearance == "dark" ? .darkAqua : .aqua)
             view.layoutSubtreeIfNeeded()

@@ -1,6 +1,6 @@
 import XCTest
 import OilFindCore
-@testable import OilFind
+@testable import OilFindApp
 
 final class M9Tests: XCTestCase {
     func testT90MotionVariables() {

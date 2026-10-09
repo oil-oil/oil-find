@@ -21,6 +21,8 @@ jobs:
         run: swift build
       - name: Test Swift app
         run: swift test
+      - name: Check open core boundary
+        run: python3 Tests/Scripts/test_open_core.py
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
         with:
