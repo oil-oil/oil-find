@@ -53,7 +53,7 @@
       <text x="70" y="112" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'PingFang SC', 'Helvetica Neue', sans-serif" font-size="22" fill="#1d1d1f">Screenshot 2026-09-28.png</text>
       <text x="70" y="137" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'PingFang SC', 'Helvetica Neue', sans-serif" font-size="18" fill="#7c818b">Text in image: …invoice date…</text>
       
-      <path d="M28 174 a3 3 0 0 1 3 -3 h7 l3 3 h11 a3 3 0 0 1 3 3 v15 a3 3 0 0 1 -3 3 h-21 a3 3 0 0 1 -3 -3 z" fill="#8fbdf7" stroke="#5b9cf0" stroke-width="1.4"/>
+      <path d="M30 170 h13 l7 7 v19 a2 2 0 0 1 -2 2 h-18 a2 2 0 0 1 -2 -2 v-24 a2 2 0 0 1 2 -2 z M43 170 v7 h7" fill="#ffffff" stroke="#8a8f98" stroke-width="1.6" stroke-linejoin="round"/>
       <text x="70" y="178" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'PingFang SC', 'Helvetica Neue', sans-serif" font-size="22" fill="#1d1d1f">invoice-september.pdf</text>
       <text x="70" y="203" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'PingFang SC', 'Helvetica Neue', sans-serif" font-size="18" fill="#7c818b">/Volumes/T7 Shield · Not connected</text>
       
