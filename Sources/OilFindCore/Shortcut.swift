@@ -2,8 +2,12 @@ import Foundation
 import Carbon
 
 public enum Shortcut {
-    public static let defaultKeyCode = UInt32(kVK_ANSI_F)
-    public static let defaultModifiers = UInt32(cmdKey | shiftKey)
+    public static let defaultCmdSpace = (keyCode: UInt32(kVK_Space), modifiers: UInt32(cmdKey))
+    public static let oldShiftCmdF = (keyCode: UInt32(kVK_ANSI_F), modifiers: UInt32(cmdKey | shiftKey))
+    public static let defaultKeyCode = defaultCmdSpace.keyCode
+    public static let defaultModifiers = defaultCmdSpace.modifiers
+    public static let fallbackKeyCode = oldShiftCmdF.keyCode
+    public static let fallbackModifiers = oldShiftCmdF.modifiers
 
     public static func symbols(keyCode: UInt32, modifiers: UInt32) -> String {
         let prefix = [(controlKey, "⌃"), (optionKey, "⌥"), (shiftKey, "⇧"), (cmdKey, "⌘")]

@@ -34,7 +34,7 @@ export function demoFiles(lang: Language): DemoFile[] {
 }
 
 export const KINDS = [null, 'folder', 'app', 'doc', 'image', 'code'] as const;
-export const RUN: readonly [string, string, string][] = [['r', '402,875', '8.4'], ['re', '122,565', '6.4'], ['rea', '20,886', '3.5'], ['read', '8,745', '0.8'], ['readm', '5,163', '0.3'], ['readme', '5,156', '0.2']];
+export const RUN: readonly [string, string][] = [['r', '12'], ['re', '8'], ['rea', '5'], ['read', '3'], ['readm', '2'], ['readme', '2']];
 
 export function parse(raw: string): Query {
   const q: Query = { pos: [], neg: [], exts: [], paths: [], today: false, empty: true };

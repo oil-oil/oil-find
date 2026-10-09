@@ -14,7 +14,8 @@ final class M4Tests: XCTestCase {
             }
             XCTAssertEqual(Shortcut.symbols(keyCode: UInt32(kVK_ANSI_F), modifiers: mask), prefix + "F")
         }
-        XCTAssertEqual(Shortcut.symbols(keyCode: Shortcut.defaultKeyCode, modifiers: Shortcut.defaultModifiers), "⇧⌘F")
+        XCTAssertEqual(Shortcut.symbols(keyCode: Shortcut.defaultKeyCode, modifiers: Shortcut.defaultModifiers), "⌘␣")
+        XCTAssertEqual(Shortcut.symbols(keyCode: Shortcut.fallbackKeyCode, modifiers: Shortcut.fallbackModifiers), "⇧⌘F")
         for (code, name) in [(kVK_ANSI_A, "A"), (kVK_ANSI_Z, "Z"), (kVK_ANSI_0, "0"), (kVK_ANSI_9, "9"),
             (kVK_F1, "F1"), (kVK_F12, "F12"), (kVK_F20, "F20"), (kVK_LeftArrow, "←"), (kVK_RightArrow, "→"),
             (kVK_UpArrow, "↑"), (kVK_DownArrow, "↓"), (kVK_Space, "␣"), (kVK_Return, "↩"), (kVK_ANSI_KeypadEnter, "⌤"),
@@ -49,8 +50,8 @@ final class M4Tests: XCTestCase {
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
         SettingsPreferences.register(in: defaults)
-        XCTAssertEqual(defaults.integer(forKey: "hotKeyCode"), 3)
-        XCTAssertEqual(defaults.integer(forKey: "hotKeyModifiers"), Int(cmdKey | shiftKey))
+        XCTAssertEqual(defaults.integer(forKey: "hotKeyCode"), 49)
+        XCTAssertEqual(defaults.integer(forKey: "hotKeyModifiers"), Int(cmdKey))
         XCTAssertTrue(SettingsPreferences.searchOptions(in: defaults).pinyin)
         XCTAssertEqual(SettingsPreferences.searchOptions(in: defaults).sort, .relevance)
         XCTAssertFalse(defaults.bool(forKey: "sortAscending"))
@@ -63,6 +64,34 @@ final class M4Tests: XCTestCase {
         XCTAssertTrue(SettingsPreferences.searchOptions(in: defaults).ascending)
         XCTAssertEqual(SettingsPreferences.indexConfig(limited: true, in: defaults).userExcludedPaths, ["/a"])
         XCTAssertTrue(SettingsPreferences.indexConfig(limited: true, in: defaults).limitedMode)
+    }
+
+    func testLauncherPreferenceDefaultsAndPersistedChoices() throws {
+        let suite = "OilFindLauncherPreferences-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        SettingsPreferences.register(in: defaults)
+        XCTAssertTrue(defaults.bool(forKey: "calculatorEnabled"))
+        XCTAssertTrue(defaults.bool(forKey: "webSearchEnabled"))
+        XCTAssertEqual(defaults.string(forKey: "webSearchEngine"), "duckDuckGo")
+
+        defaults.set(12, forKey: "hotKeyCode")
+        defaults.set(Int(controlKey | optionKey), forKey: "hotKeyModifiers")
+        defaults.set(false, forKey: "calculatorEnabled")
+        defaults.set(false, forKey: "webSearchEnabled")
+        defaults.set("google", forKey: "webSearchEngine")
+        SettingsPreferences.register(in: defaults)
+        XCTAssertEqual(defaults.integer(forKey: "hotKeyCode"), 12)
+        XCTAssertEqual(defaults.integer(forKey: "hotKeyModifiers"), Int(controlKey | optionKey))
+        XCTAssertFalse(defaults.bool(forKey: "calculatorEnabled"))
+        XCTAssertFalse(defaults.bool(forKey: "webSearchEnabled"))
+        XCTAssertEqual(defaults.string(forKey: "webSearchEngine"), "google")
+
+        defaults.set(Int(Shortcut.oldShiftCmdF.keyCode), forKey: "hotKeyCode")
+        defaults.set(Int(Shortcut.oldShiftCmdF.modifiers), forKey: "hotKeyModifiers")
+        SettingsPreferences.register(in: defaults)
+        XCTAssertEqual(defaults.integer(forKey: "hotKeyCode"), Int(Shortcut.oldShiftCmdF.keyCode))
+        XCTAssertEqual(defaults.integer(forKey: "hotKeyModifiers"), Int(Shortcut.oldShiftCmdF.modifiers))
     }
 
     func testT52UpdateConfig() throws {

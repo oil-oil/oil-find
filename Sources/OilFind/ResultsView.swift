@@ -42,6 +42,7 @@ private final class ResultCell: NSTableCellView {
         sizeLabel.frame = NSRect(x: bounds.width - 150, y: 27, width: 124, height: 15)
     }
     func configure(_ item: ResultItem, query: Query, icons: IconProvider) {
+        dateLabel.isHidden = false; sizeLabel.isHidden = false
         displayedPath = item.path
         let name = NSMutableAttributedString(string: item.name, attributes: [.font: nameLabel.font!, .foregroundColor: NSColor.labelColor])
         for range in Presentation.highlightRanges(name: item.name, query: query) {
@@ -54,6 +55,24 @@ private final class ResultCell: NSTableCellView {
         toolTip = item.path
         icon.image = icons.icon(name: item.name, path: item.path, flags: item.flags, kind: item.kind) { [weak self] image in
             if self?.displayedPath == item.path { self?.icon.image = image }
+        }
+    }
+    func configure(_ row: LauncherRow, icons: IconProvider) {
+        displayedPath = row.identity
+        nameLabel.stringValue = row.title
+        pathLabel.stringValue = row.subtitle
+        dateLabel.isHidden = true; sizeLabel.isHidden = true
+        toolTip = row.title + "\n" + row.subtitle
+        icon.image = Theme.symbol(row.symbol, size: 28, weight: .regular)
+        if case .app(let app) = row {
+            icon.image = icons.icon(name: app.name, path: app.path, flags: SiftFlag.dir | SiftFlag.package, kind: 2) { [weak self] image in
+                if self?.displayedPath == row.identity { self?.icon.image = image }
+            }
+        }
+        if case .clipboard(let entry) = row, let path = entry.filePaths?.first {
+            icon.image = icons.icon(name: (path as NSString).lastPathComponent, path: path, flags: 0, kind: 0, loadFileIcon: true) { [weak self] image in
+                if self?.displayedPath == row.identity { self?.icon.image = image }
+            }
         }
     }
 }
@@ -126,16 +145,25 @@ final class ResultsView: FlippedView, NSTableViewDataSource, NSTableViewDelegate
     // Legacy wheels have no end phase; also bridge the gesture-to-momentum gap.
     private static let scrollQuietPeriod = 0.12
     private var pendingRefresh: SearchResult?
+    private var pendingSnapshot: SearchSnapshot?
+    private var retainedSelection: (identity: String, fileID: UInt32?, store: IndexStore?, origin: NSPoint)?
     private var scrolling: Bool { liveScrolling || wheelScrolling || momentumScrolling }
     let icons = IconProvider()
     var result: SearchResult?
+    private(set) var snapshot: SearchSnapshot?
+    var onSnapshotApplied: ((SearchSnapshot) -> Void)?
+    var rowCount: Int { snapshot?.count ?? result?.items.count ?? 0 }
+    var selectedLauncherRow: LauncherRow? { snapshot?.row(at: selectedRow) }
     var onOpen: (() -> Void)?
     var onSelection: (() -> Void)?
+    var onUserNavigation: (() -> Void)?
+    var canPerformFileActions: (() -> Bool)?
     var onContextMenu: ((Int) -> NSMenu?)?
     var onDragging: ((Bool) -> Void)?
     var onRefreshApplied: ((SearchResult) -> Void)?
     var selectedRow: Int { table.selectedRow }
     var selectedID: UInt32? {
+        if let snapshot { if case .file(let item)? = snapshot.row(at: selectedRow) { return item.id }; return nil }
         guard let result, result.items.indices.contains(selectedRow) else { return nil }
         return result.items[selectedRow]
     }
@@ -157,7 +185,9 @@ final class ResultsView: FlippedView, NSTableViewDataSource, NSTableViewDelegate
         table.contextMenu = { [weak self] row in self?.onContextMenu?(row) }
         table.onPointerMove = { [weak self] in self?.recomputeHover() }
         table.onPointerExit = { [weak self] in self?.hideHover() }
-        table.onPointerReselection = { [weak self] in self?.updateSelection(animated: false) }
+        table.onPointerReselection = { [weak self] in
+            self?.retainedSelection = nil; self?.onUserNavigation?(); self?.updateSelection(animated: false)
+        }
         scroll.onScrollWheel = { [weak self] event in self?.wheelScrolled(event) }
         scroll.documentView = table; addSubview(scroll)
         table.addSubview(hoverPlate, positioned: .below, relativeTo: nil); hoverPlate.alphaValue = 0
@@ -178,13 +208,33 @@ final class ResultsView: FlippedView, NSTableViewDataSource, NSTableViewDelegate
     func show(_ result: SearchResult, selection: Int = 0, resetScroll: Bool = true) {
         cancelPendingRefresh(); hideHover(immediately: true)
         refreshing = true
-        self.result = result; table.reloadData()
+        snapshot = nil; self.result = result; table.reloadData()
         select(selection)
         if resetScroll { scroll.contentView.scroll(to: NSPoint(x: 0, y: -6)); scroll.reflectScrolledClipView(scroll.contentView) }
         updateSelection(animated: false); refreshing = false
         recomputeHover(); onSelection?()
     }
-    func cancelPendingRefresh() { pendingRefresh = nil }
+    func cancelPendingRefresh() { pendingRefresh = nil; pendingSnapshot = nil }
+    func show(_ snapshot: SearchSnapshot, selection: Int = 0, resetScroll: Bool = true) {
+        cancelPendingRefresh(); retainedSelection = nil; hideHover(immediately: true); refreshing = true
+        self.snapshot = snapshot; result = snapshot.fileResult; table.reloadData(); select(selection)
+        if resetScroll { scroll.contentView.scroll(to: NSPoint(x: 0, y: -6)); scroll.reflectScrolledClipView(scroll.contentView) }
+        updateSelection(animated: false); refreshing = false; recomputeHover(); onSelection?()
+    }
+    func refresh(_ snapshot: SearchSnapshot, preserveSelection: Bool = true) {
+        if scrolling || dragging { pendingSnapshot = snapshot; return }
+        let old = self.snapshot, row = selectedLauncherRow
+        let origin = scroll.contentView.bounds.origin
+        let anchor = retainedSelection ?? row.map { (identity: $0.identity, fileID: selectedID, store: old?.fileResult?.store, origin: origin) }
+        let position = preserveSelection ? anchor.flatMap { snapshot.position(of: $0.identity, fileID: $0.fileID, store: $0.store) } : nil
+        let pending = preserveSelection && snapshot.filesPending && position == nil ? anchor : nil
+        let selected = position ?? 0
+        show(snapshot, selection: selected, resetScroll: false)
+        retainedSelection = pending
+        var rect = scroll.contentView.bounds; rect.origin = position == nil ? origin : anchor?.origin ?? origin
+        scroll.contentView.scroll(to: scroll.contentView.constrainBoundsRect(rect).origin); scroll.reflectScrolledClipView(scroll.contentView)
+        onSnapshotApplied?(snapshot)
+    }
     func localize() {
         let range = table.rows(in: table.visibleRect)
         guard range.location != NSNotFound, range.length > 0 else { return }
@@ -267,11 +317,13 @@ final class ResultsView: FlippedView, NSTableViewDataSource, NSTableViewDelegate
     }
     private func finishInteraction() {
         guard !scrolling, !dragging else { return }
-        if let pendingRefresh { refresh(pendingRefresh) }
+        if let pendingSnapshot { self.pendingSnapshot = nil; refresh(pendingSnapshot) }
+        else if let pendingRefresh { refresh(pendingRefresh) }
         recomputeHover()
     }
     deinit { scrollEnd?.cancel(); NotificationCenter.default.removeObserver(self) }
     func item(at row: Int) -> ResultItem? {
+        if let snapshot { if case .file(let item)? = snapshot.row(at: row) { return item }; return nil }
         guard let result, result.items.indices.contains(row) else { return nil }
         let store = result.store, id = result.items[row]
         return store.read {
@@ -283,19 +335,20 @@ final class ResultsView: FlippedView, NSTableViewDataSource, NSTableViewDelegate
     }
     var selectedItem: ResultItem? { item(at: selectedRow) }
     func select(_ row: Int, repeatKey: Bool = false) {
+        if !refreshing { retainedSelection = nil }
         repeating = repeatKey; defer { repeating = false }
         setSelection(row, reveal: true)
     }
     private func setSelection(_ row: Int, reveal: Bool) {
-        guard let result, !result.items.isEmpty else { table.deselectAll(nil); return }
-        let row = min(max(0, row), result.items.count - 1)
+        guard rowCount > 0 else { table.deselectAll(nil); return }
+        let row = min(max(0, row), rowCount - 1)
         table.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
         if reveal { table.scrollRowToVisible(row) }
     }
     func move(_ delta: Int, repeatKey: Bool = false) {
-        guard let result, !result.items.isEmpty else { return }
+        guard rowCount > 0 else { return }
         let target = max(0, selectedRow) + delta
-        if !repeatKey && (target < 0 || target >= result.items.count) { nudge(delta) }
+        if !repeatKey && (target < 0 || target >= rowCount) { nudge(delta) }
         select(target, repeatKey: repeatKey)
     }
     func page(_ delta: Int, repeatKey: Bool = false) { select(max(0, selectedRow) + delta * max(1, Int(scroll.contentSize.height / Theme.rowHeight)), repeatKey: repeatKey) }
@@ -335,7 +388,7 @@ final class ResultsView: FlippedView, NSTableViewDataSource, NSTableViewDelegate
         pendingPress = false; pressGeneration += 1
         if let layer = selectionPlate.layer { Theme.Motion.animate(layer, "transform.scale", to: 1, using: Theme.Motion.basic(Theme.Motion.press)) }
     }
-    func numberOfRows(in tableView: NSTableView) -> Int { result?.items.count ?? 0 }
+    func numberOfRows(in tableView: NSTableView) -> Int { rowCount }
     func tableView(_ tableView: NSTableView, rowViewForRow row: Int) -> NSTableRowView? {
         let identifier = NSUserInterfaceItemIdentifier("row")
         let view = tableView.makeView(withIdentifier: identifier, owner: self) as? ResultRow ?? ResultRow(frame: .zero)
@@ -346,15 +399,19 @@ final class ResultsView: FlippedView, NSTableViewDataSource, NSTableViewDelegate
         let cell = tableView.makeView(withIdentifier: identifier, owner: self) as? ResultCell ?? ResultCell(frame: .zero)
         cell.identifier = identifier
         if let item = item(at: row), let result { cell.configure(item, query: result.query, icons: icons) }
+        else if let item = snapshot?.row(at: row) { cell.configure(item, icons: icons) }
         return cell
     }
     func tableViewSelectionDidChange(_ notification: Notification) {
         guard !refreshing else { return }
+        retainedSelection = nil
+        if table.selectingWithPointer { onUserNavigation?() }
         updateSelection(animated: !table.selectingWithPointer); recomputeHover(); onSelection?()
     }
     @objc private func doubleClicked() { if table.clickedRow >= 0 { onOpen?() } }
     func tableView(_ tableView: NSTableView, pasteboardWriterForRow row: Int) -> NSPasteboardWriting? {
-        item(at: row).map { NSURL(fileURLWithPath: $0.path) }
+        guard canPerformFileActions?() != false else { return nil }
+        return item(at: row).map { NSURL(fileURLWithPath: $0.path) }
     }
     func tableView(_ tableView: NSTableView, draggingSession session: NSDraggingSession, willBeginAt screenPoint: NSPoint, forRowIndexes rowIndexes: IndexSet) {
         dragging = true; hideHover(immediately: true); onDragging?(true)

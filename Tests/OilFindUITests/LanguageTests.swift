@@ -90,7 +90,7 @@ final class LanguageTests: XCTestCase {
         XCTAssertEqual(scroll.contentView.bounds.origin, origin)
         XCTAssertEqual(table.numberOfRows, 30)
         XCTAssertTrue(search.syntaxVisible)
-        XCTAssertEqual(search.searchField.input.placeholderAttributedString?.string, "Search files, folders and apps")
+        XCTAssertEqual(search.searchField.input.placeholderAttributedString?.string, "Search apps, files, settings or calculate")
         XCTAssertTrue(descendants(search.filters).compactMap { $0 as? NSButton }.contains { $0.title == "Documents" })
         XCTAssertTrue(descendants(search.syntax).compactMap { $0 as? NSTextField }.contains { $0.stringValue == "Pinyin initials, finds 文档" })
         XCTAssertTrue(search.footer.text.contains("items"))
@@ -112,7 +112,7 @@ final class LanguageTests: XCTestCase {
         defer { controller.window?.close() }
         L10n.setLanguage(.english, in: store)
         XCTAssertTrue(search.searchField.input.isEnabled)
-        XCTAssertEqual(search.searchField.input.placeholderAttributedString?.string, "Search files, folders and apps")
+        XCTAssertEqual(search.searchField.input.placeholderAttributedString?.string, "Search apps, files, settings or calculate")
         XCTAssertFalse(descendants(search.view).compactMap { $0 as? NSTextField }.contains { $0.stringValue.localizedCaseInsensitiveContains("license") })
         XCTAssertEqual(controller.window?.title, "Check for Updates…")
         XCTAssertEqual(update.state, .latest)

@@ -52,9 +52,10 @@ final class SyntaxReference: FlippedView {
     }
     override func layout() {
         super.layout(); title.frame = NSRect(x: 28, y: 24, width: bounds.width - 56, height: 20)
+        let rowSpacing = min(CGFloat(67), max(50, (bounds.height - 64) / CGFloat(buttons.count)))
         for i in buttons.indices {
-            let y = CGFloat(64 + i * 67)
-            buttons[i].frame = NSRect(x: 18, y: y - 4, width: bounds.width - 36, height: 63)
+            let y = 64 + CGFloat(i) * rowSpacing
+            buttons[i].frame = NSRect(x: 18, y: y - 4, width: bounds.width - 36, height: rowSpacing - 4)
             examples[i].frame = NSRect(x: 10, y: 4, width: buttons[i].bounds.width - 116, height: 24)
             descriptions[i].frame = NSRect(x: 10, y: 31, width: buttons[i].bounds.width - 20, height: 18)
             groups[i].frame = NSRect(x: buttons[i].bounds.width - 98, y: 7, width: 88, height: 18)
@@ -63,6 +64,6 @@ final class SyntaxReference: FlippedView {
     override func draw(_ dirtyRect: NSRect) {
         NSColor.windowBackgroundColor.setFill(); bounds.fill()
         NSColor.separatorColor.withAlphaComponent(0.35).setFill()
-        for i in 0..<4 { NSRect(x: 28, y: CGFloat(120 + i * 67), width: bounds.width - 56, height: Theme.pixel(self)).fill() }
+        for button in buttons.dropLast() { NSRect(x: 28, y: button.frame.maxY, width: bounds.width - 56, height: Theme.pixel(self)).fill() }
     }
 }

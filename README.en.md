@@ -1,8 +1,4 @@
 <p align="center">
-  <img src="./assets/readme/hero.en.svg" width="100%" alt="Oil Find: Everything, for the Mac. Press ⇧⌘F and results appear as you type.">
-</p>
-
-<p align="center">
   <a href="https://github.com/oil-oil/oil-find/releases/latest"><b>Download</b></a>
   &nbsp;·&nbsp;
   <a href="https://find.oiloil.org/en">Website</a>
@@ -10,30 +6,36 @@
   <a href="./README.md">中文</a>
 </p>
 
-<p align="center">
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="./assets/readme/search-en-dark.png">
-  <img src="./assets/readme/search-en-light.png" width="100%" alt="The Oil Find search panel: readme is typed, eight results are ranked by relevance with the matching part in blue, and the footer shows the search took 0.2 milliseconds.">
-</picture>
-</p>
+Oil Find is a native macOS search panel. Press ⌘Space by default. If that shortcut cannot register because of Spotlight, the app temporarily tries ⇧⌘F and provides a Spotlight settings link, directions and retry in Settings. You can also turn off the Spotlight search shortcut in System Settings → Keyboard → Keyboard Shortcuts → Spotlight. Upgrades preserve an existing custom shortcut.
 
-Oil Find is a file search tool for macOS that works like Everything on Windows: it keeps its own in-memory index of every file name on your disk instead of relying on Spotlight. Press ⇧⌘F, a search field appears in the middle of the screen, and results update with every keystroke. When files are created, renamed or deleted, the index follows along in real time.
+File search uses its own on-disk file-name index instead of Spotlight. Results update as you type, and file creation, renaming and deletion are reflected in the index. You can also switch to apps, settings, clipboard history and offline calculations.
 
-## Why it's fast
+## File search
 
 - **File names live in one contiguous block of memory.** Hundreds of thousands of names are stored column by column and scanned front to back, with no per-file objects.
 - **Matching runs in C with NEON.** Character comparisons use Apple silicon's vector instructions in batches.
-- **Each keystroke narrows the last result.** Typing one more character only searches what already matched.
+- **Results narrow incrementally.** Typing one more character only searches what already matched.
 - **Only changes get updated.** FSEvents reports what changed and the index is updated incrementally. After a restart, Oil Find catches up from where it left off.
 
-Measured on an Apple M5 with 24 GB of memory, using the command-line tool in this repository. Each query ran 20 times; the table shows the median.
+Dependency folders, app and package internals, Library and system folders are excluded by default. You can adjust the index scope in Settings. File search supports pinyin, name and path conditions, wildcards, and kind, size and modification-date filters.
 
-| Index scope | Files | Indexing | Resident memory | `readme` | `wd` (pinyin) | `kind:image` |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Default | 850K | 3.0 s | 45 MB | 0.6 ms | 0.3 ms | 3.9 ms |
-| Whole disk | 7.5M | 27.2 s | 343 MB | 8.1 ms | 3.4 ms | 3.8 ms |
+## Other search scopes
 
-The default scope leaves out dependency folders, app and package internals, Library and system folders. You can turn each of them on in Settings. A single letter matches the most files and is the slowest case: about 11 ms in the default scope and about 58 ms for the whole disk.
+The panel offers All, Apps, Files, Settings and Clipboard scopes, switchable with ⌘0…⌘4. Use ⌥⌘1…9 for file-type filters. File results retain Quick Look, path copying, Finder reveal and drag-and-drop.
+
+![Unified search using synthetic examples](./assets/readme/launcher-en.png)
+
+Clipboard history is off by default and starts recording only after you first enable it. It records text, links and path references to local files and folders. Upgrades preserve your enabled state and preferences, and existing text history remains compatible. A group of files copied in Finder becomes one history entry; the list shows names and a count, and you can search by file name or path.
+
+Select a file history entry and press ⌘C to restore the whole group as file URLs on the system clipboard, then return to Finder and press ⌘V to copy the files. Return attempts to paste directly after checking the original target app, focus and Accessibility permission; if a check fails, the entry is only copied to the system clipboard and the app tells you. History stores paths without backing up files or reading their contents. Files moved or deleted from those paths cannot be recovered from history. Before copying, the app checks every file in the group on a background queue. A missing path or a two-second deadline preserves the current clipboard. Changing the query, selected entry or panel state cancels the pending action before any write.
+
+Default retention is 7 days and up to 500 entries, configurable to 1–365 days and 1–10,000 entries. Each text entry is limited to 256 KiB in UTF-8. Each file entry allows up to 1,000 paths with a combined UTF-8 size of at most 256 KiB. Total history storage remains limited to 32 MiB. History, including file path references, is encrypted locally and protected with Keychain. Password managers are excluded by default; you can exclude other source apps, pause capture or clear history. Image content, file promises whose contents have not yet been generated, and items marked concealed, transient or autogenerated are not captured.
+
+If Keychain access fails, the original encrypted file is preserved, new entries stay in memory, and Settings shows the storage error. Click “Authorize History Storage” to request system authorization. After the original history loads successfully, it is merged with current entries and saved; failed authorization never overwrites the original file.
+
+![Clipboard history using synthetic examples](./assets/readme/clipboard-en.png)
+
+Expression calculations and unit conversions work offline. Enter a URL to open it. DuckDuckGo is the default web search engine, with Google and Bing as options. Choose a web result for a regular query or enter `web:` to request web search explicitly; the browser opens only when you activate that result. Typing does not send queries to a search engine.
 
 ## Search syntax
 
@@ -58,13 +60,17 @@ You can paste paths straight from a terminal or editor: `file://` URLs, quoted o
 
 | Key | Action |
 | --- | --- |
-| <kbd>⇧</kbd><kbd>⌘</kbd><kbd>F</kbd> | Open search (configurable in Settings) |
-| <kbd>Return</kbd> | Open |
-| <kbd>⌘</kbd><kbd>Return</kbd> | Show in Finder |
-| <kbd>⌘</kbd><kbd>Y</kbd> | Quick Look |
-| <kbd>⌘</kbd><kbd>C</kbd> / <kbd>⌥</kbd><kbd>⌘</kbd><kbd>C</kbd> | Copy path, copy name |
-| <kbd>⌘</kbd><kbd>⌫</kbd> | Move to Trash |
-| <kbd>Tab</kbd> / <kbd>⌘</kbd><kbd>1</kbd>…<kbd>9</kbd> | Switch kind |
+| <kbd>⌘</kbd><kbd>Space</kbd> | Open search (default) |
+| <kbd>⇧</kbd><kbd>⌘</kbd><kbd>F</kbd> | Temporary fallback if ⌘Space cannot register |
+| <kbd>⌘</kbd><kbd>0</kbd>…<kbd>4</kbd> | Switch All, Apps, Files, Settings and Clipboard scopes |
+| <kbd>⌥</kbd><kbd>⌘</kbd><kbd>1</kbd>…<kbd>9</kbd> | Choose file type |
+| <kbd>Return</kbd> | Execute the result: open, copy a calculation, or paste a clipboard entry |
+| <kbd>⌘</kbd><kbd>Return</kbd> | Files: show in Finder |
+| <kbd>⌘</kbd><kbd>Y</kbd> | Files: Quick Look; clipboard: multiline preview |
+| <kbd>⌘</kbd><kbd>C</kbd> | Copy selected query text first, otherwise the result's path, text or URL; file clipboard entries restore the whole group as file URLs |
+| <kbd>⌥</kbd><kbd>⌘</kbd><kbd>C</kbd> | Files: copy name |
+| <kbd>⌘</kbd><kbd>⌫</kbd> | Files: move to Trash; clipboard: delete the history entry |
+| <kbd>Tab</kbd> | Cycle file types in the Files scope |
 | <kbd>⌘</kbd><kbd>/</kbd> | Syntax reference |
 
 You can also drag results into other apps.
@@ -73,16 +79,16 @@ You can also drag results into other apps.
 
 1. Download `Oil-Find.zip` from [Releases](https://github.com/oil-oil/oil-find/releases/latest), unzip it and drag Oil Find into Applications.
 2. The first time you open it, macOS blocks it because it isn't notarized by Apple. Go to System Settings → Privacy & Security and click Open Anyway near the bottom.
-3. Press ⇧⌘F and start typing.
+3. Press ⌘Space and start typing. If the shortcut cannot register, the app temporarily tries ⇧⌘F. You can adjust the Spotlight shortcut in System Settings as described above, then retry from Oil Find's Settings.
 4. Optional: grant Full Disk Access to also search mail attachments and other apps' data. Oil Find works fine without it.
 
 When a new version is out, Oil Find tells you; click Update and Restart. You can turn off automatic checks in Settings.
 
-To uninstall, quit Oil Find and delete Oil Find from Applications and `~/Library/Application Support/Oil Find`.
+Source users can run `scripts/uninstall.sh` to remove the app, index, clipboard history, preferences and clipboard encryption key after confirmation. For manual removal, quit Oil Find and delete the app from Applications and `~/Library/Application Support/Oil Find`; also remove the `com.oiloil.find.clipboard-history` Keychain item if desired.
 
 ## Build from source
 
-Requires macOS 14 and Swift 5.10 or later (Xcode 15.3 or newer).
+The app runs on macOS 14 or later. Source builds require Xcode with macOS SDK 15.4 or later; CI uses Xcode 16.4 (macOS 15.5 SDK). The project retains Swift 5 language mode and a macOS 14 deployment target.
 
 ```sh
 git clone https://github.com/oil-oil/oil-find.git
@@ -92,31 +98,37 @@ scripts/build-app.sh   # builds build/Oil Find.app
 scripts/install.sh     # builds and installs into Applications
 ```
 
-Your own builds are ad-hoc signed, so you need to grant Full Disk Access again after each rebuild.
+Without a stable signing identity, source builds are ad-hoc signed. Rebuilding may require granting Full Disk Access and access to an existing clipboard key again. If Clipboard Settings shows a storage error, click “Authorize History Storage” and complete the macOS Keychain prompt manually. Failed authorization preserves the original encrypted history; new entries remain in memory.
+
+Before submitting a PR, run `scripts/verify-release-app.sh "build/Oil Find.app"` to check the release bundle. `scripts/verify-clipboard-upgrade.sh` uses an isolated keychain and a temporary stable signing identity to verify real encrypted history across shutdown and upgrades, without accessing the user's history. `scripts/compare-engine-performance.py` compares release file engines; see the [validation record](./docs/SPOTLIGHT_VALIDATION.md) for usage and measurement limits.
 
 ## Privacy
 
-- Oil Find reads file names, sizes and modification dates only, never file contents.
-- The index stays on your Mac in `~/Library/Application Support/Oil Find/`.
-- The only network request is a daily update check. It fetches one version file and sends no device or usage data. You can turn it off in Settings.
+- The file-search engine reads file names, sizes and modification dates only, never file contents. Its index stays on your Mac in `~/Library/Application Support/Oil Find/`.
+- Clipboard history is off by default. When enabled, it saves text, links and local file/folder path references, encrypted locally and protected with Keychain. File references store paths without reading contents or backing up files. You can pause, clear it or exclude source apps; upgrades preserve your enabled state and preferences.
+- The frontmost app at copy time approximates the source; exclusions cannot identify every sensitive item. If the key is unavailable or the archive is corrupt, the original file is preserved, an error is shown, and new entries stay in memory.
+- Web search opens only after you choose an engine and submit. Typing does not connect to a search engine or send the query.
+- App network use includes a user-submitted web search and the update check. The update check fetches one version file without device or usage data and can be disabled in Settings.
 
 ## Current limits
 
 - Apple silicon and macOS 14 or later only.
 - External drives and network volumes aren't indexed yet.
-- File names only; file contents aren't searched.
+- The file index searches names, not file contents. Clipboard history is a separate opt-in feature; file entries store path references only. Moved or deleted paths cannot be recovered. If any path in the group is missing, the current clipboard is preserved and you need to copy the files again.
 
 ## Project layout
 
 | Folder | Contents |
 | --- | --- |
 | `Sources/COilFind` | C: batched directory reads, name comparison, search scoring |
-| `Sources/OilFindCore` | Scanning, indexing, queries, live updates, persistence, app updates |
-| `Sources/OilFind` | The AppKit app and Settings |
+| `Sources/OilFindCore` | Scanning, indexing, file queries, live updates, persistence and app updates |
+| `Sources/OilFind` | AppKit app, search panel, cross-source coordinator, clipboard and system integration |
 | `Sources/oilfind-cli` | Command-line tool for benchmarks and troubleshooting |
 | `site` | The website, [find.oiloil.org](https://find.oiloil.org/en) |
 
 See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for the index design and [AGENTS.md](./AGENTS.md) for development conventions. Issues and pull requests are welcome.
+
+See [docs/SPOTLIGHT_VALIDATION.md](./docs/SPOTLIGHT_VALIDATION.md) for this extension's automated, performance and hardware validation scope.
 
 ## License
 

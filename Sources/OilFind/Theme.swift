@@ -62,8 +62,11 @@ enum Theme {
     }
     static func pixel(_ view: NSView) -> CGFloat { 1 / (view.window?.backingScaleFactor ?? 2) }
     static func symbol(_ name: String, size: CGFloat, weight: NSFont.Weight) -> NSImage {
-        NSImage(systemSymbolName: name, accessibilityDescription: nil)!
-            .withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: size, weight: weight))!
+        // Symbol availability varies by system version; a missing icon must not crash the UI.
+        let image = NSImage(systemSymbolName: name, accessibilityDescription: nil)
+            ?? NSImage(systemSymbolName: "questionmark.square", accessibilityDescription: nil)
+            ?? NSImage(size: NSSize(width: size, height: size))
+        return image.withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: size, weight: weight)) ?? image
     }
     static func label(_ size: CGFloat, _ weight: NSFont.Weight, _ color: NSColor) -> NSTextField {
         let label = NSTextField(labelWithString: "")

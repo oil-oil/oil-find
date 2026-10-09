@@ -14,6 +14,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var localizedMenuItems: [(String, NSMenuItem)] = []
     private var languageObserver: NSObjectProtocol?
     private var hotKey: HotKey?
+    private var actualKeyCode: UInt32?, actualModifiers: UInt32?
+    private var shortcutRetryObserver: NSObjectProtocol?
     private var manager: IndexManager?
     private var settingsController: SettingsWindowController?
     private var updateItem: NSMenuItem?, checkUpdateItem: NSMenuItem?, quitItem: NSMenuItem?
@@ -41,12 +43,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         NSApp.setActivationPolicy(.accessory)
         DistributedNotificationCenter.default().addObserver(self, selector: #selector(reopenRequested(_:)), name: Self.showRequest, object: nil)
         let defaults = UserDefaults.standard
-        let key = (defaults.object(forKey: "hotKeyCode") as? NSNumber)?.uint32Value ?? UInt32(kVK_ANSI_F)
-        let modifiers = (defaults.object(forKey: "hotKeyModifiers") as? NSNumber)?.uint32Value ?? UInt32(cmdKey | shiftKey)
-        hotKey = HotKey(keyCode: key, modifiers: modifiers) { [weak self] in self?.handleHotKey() }
+        let key = UInt32(clamping: defaults.integer(forKey: "hotKeyCode"))
+        let modifiers = UInt32(clamping: defaults.integer(forKey: "hotKeyModifiers"))
+        _ = registerHotKey(keyCode: key, modifiers: modifiers)
         buildMenu(keyCode: key, modifiers: modifiers)
+        updateShortcutStatus()
+        shortcutRetryObserver = NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main) { [weak self] _ in
+            guard let self, self.settingsController?.model.recording != true else { return }
+            let wanted = UInt32(clamping: defaults.integer(forKey: "hotKeyCode"))
+            let mask = UInt32(clamping: defaults.integer(forKey: "hotKeyModifiers"))
+            if self.actualKeyCode != wanted || self.actualModifiers != mask { self.retryHotKey() }
+        }
         languageObserver = NotificationCenter.default.addObserver(forName: L10n.changed, object: nil, queue: .main) { [weak self] _ in self?.localizeMenu() }
         panel.searchController.onSettings = { [weak self] in self?.showSettings() }
+        panel.searchController.startSources()
         let fullDiskAccess = Permissions.hasFullDiskAccess()
         var state = WelcomeState(didFinishOnboarding: defaults.bool(forKey: "didFinishOnboarding"), skippedFullDiskAccess: defaults.bool(forKey: "skippedFullDiskAccess"), granted: fullDiskAccess)
         let indexRequest = state.launch()
@@ -95,7 +105,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let manager = IndexManager(config: SettingsPreferences.indexConfig(limited: limited), dbURL: Self.dbURL)
         self.manager = manager; panel.searchController.manager = manager
         settingsController?.model.manager = manager
-        panel.searchController.setState(.indexing)
         panel.searchController.searchField.focus()
         indexStateStartedAt = ProcessInfo.processInfo.systemUptime
         manager.onStateChange = { [weak self, weak manager] state in
@@ -106,7 +115,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             AppLog.logger.info("index state=\(name, privacy: .public) entries=\(count, privacy: .public) elapsed=\(now - self.indexStateStartedAt, privacy: .public)s")
             self.indexStateStartedAt = now
             self.panel.searchController.managerStateChanged(state)
-            if state == .scanning && self.welcomeState?.isShowing != true { self.panel.show(source: .indexing) }
         }
         manager.onIndexChange = { [weak self] in self?.panel.searchController.indexChanged() }
         manager.start()
@@ -145,31 +153,63 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
     private func registerHotKey(keyCode: UInt32, modifiers: UInt32) -> Bool {
         hotKey?.unregister()
-        hotKey = HotKey(keyCode: keyCode, modifiers: modifiers) { [weak self] in self?.handleHotKey() }
-        hotKeyFailureItem?.isHidden = hotKey != nil
-        if hotKey != nil {
-            openItem?.keyEquivalent = Shortcut.keyEquivalent(keyCode)
-            openItem?.keyEquivalentModifierMask = HotKey.modifierFlags(modifiers)
+        hotKey = nil; actualKeyCode = nil; actualModifiers = nil
+        if !SpotlightShortcut.isReserved(keyCode: keyCode, modifiers: modifiers) {
+            hotKey = HotKey(keyCode: keyCode, modifiers: modifiers) { [weak self] in self?.handleHotKey() }
         }
-        if hotKey != nil { welcomeController?.model.updateShortcut(keyCode, modifiers) }
-        return hotKey != nil
+        let requestedRegistered = hotKey != nil
+        if requestedRegistered { actualKeyCode = keyCode; actualModifiers = modifiers }
+        else if keyCode == Shortcut.defaultKeyCode && modifiers == Shortcut.defaultModifiers,
+                !SpotlightShortcut.isReserved(keyCode: Shortcut.fallbackKeyCode, modifiers: Shortcut.fallbackModifiers) {
+            hotKey = HotKey(keyCode: Shortcut.fallbackKeyCode, modifiers: Shortcut.fallbackModifiers) { [weak self] in self?.handleHotKey() }
+            if hotKey != nil { actualKeyCode = Shortcut.fallbackKeyCode; actualModifiers = Shortcut.fallbackModifiers }
+        }
+        updateShortcutStatus(clearErrorWhenBound: requestedRegistered)
+        return requestedRegistered
+    }
+    private func updateShortcutStatus(clearErrorWhenBound: Bool = false) {
+        let defaults = UserDefaults.standard
+        let desired = UInt32(clamping: defaults.integer(forKey: "hotKeyCode"))
+        let modifiers = UInt32(clamping: defaults.integer(forKey: "hotKeyModifiers"))
+        hotKeyFailureItem?.isHidden = actualKeyCode == desired && actualModifiers == modifiers
+        if hotKey != nil {
+            openItem?.keyEquivalent = Shortcut.keyEquivalent(actualKeyCode!)
+            openItem?.keyEquivalentModifierMask = HotKey.modifierFlags(actualModifiers!)
+            welcomeController?.model.updateShortcut(actualKeyCode!, actualModifiers!)
+        } else { openItem?.keyEquivalent = "" }
+        settingsController?.model.updateShortcutStatus(keyCode: actualKeyCode, modifiers: actualModifiers,
+                                                      clearErrorWhenBound: clearErrorWhenBound)
+    }
+    private func retryHotKey() {
+        let defaults = UserDefaults.standard
+        _ = registerHotKey(keyCode: UInt32(clamping: defaults.integer(forKey: "hotKeyCode")), modifiers: UInt32(clamping: defaults.integer(forKey: "hotKeyModifiers")))
     }
     @objc func showSettings() { presentSettings() }
     private func presentSettings() {
         panel.hide(source: .settings)
         NSApp.activate(ignoringOtherApps: true)
         if settingsController == nil {
-            let model = SettingsModel(); model.manager = manager
-            model.suspendHotKey = { [weak self] in self?.hotKey?.unregister(); self?.hotKey = nil }
-            model.registerHotKey = { [weak self] code, mask in self?.registerHotKey(keyCode: code, modifiers: mask) ?? false }
+            let model = SettingsModel(clipboard: panel.searchController.clipboard); model.manager = manager
+            model.suspendHotKey = { [weak self] in
+                self?.hotKey?.unregister(); self?.hotKey = nil
+                self?.actualKeyCode = nil; self?.actualModifiers = nil; self?.updateShortcutStatus()
+            }
+            model.registerHotKey = { [weak self] code, mask in
+                let registered = self?.registerHotKey(keyCode: code, modifiers: mask) ?? false
+                DispatchQueue.main.async { [weak self] in self?.updateShortcutStatus() }
+                return registered
+            }
             model.onConfigChange = { [weak self] in
                 guard let self else { return }
                 self.manager?.updateConfig(SettingsPreferences.indexConfig(limited: self.limited))
+                self.panel.searchController.applications.refresh(excludedPaths: UserDefaults.standard.stringArray(forKey: "userExcludedPaths") ?? [])
             }
             model.onPinyinChange = { [weak self] in self?.panel.searchController.startSearch(preserveSelection: true) }
+            model.onRetryHotKey = { [weak self] in self?.retryHotKey() }
             settingsController = SettingsWindowController(model: model)
         }
         settingsController?.present()
+        updateShortcutStatus()
     }
     func menuWillOpen(_ menu: NSMenu) {
         refreshUpdateMenu()
@@ -214,6 +254,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         UpdateManager.shared.preventsTermination ? .terminateCancel : .terminateNow
     }
-    func applicationWillTerminate(_ notification: Notification) { if !secondaryInstance { UpdateManager.shared.stop() }; settingsController?.model.stopRefreshing(); permissionTimer?.invalidate(); hotKey?.unregister(); manager?.stop() }
-    deinit { if let languageObserver { NotificationCenter.default.removeObserver(languageObserver) } }
+    func applicationWillTerminate(_ notification: Notification) { if !secondaryInstance { UpdateManager.shared.stop() }; panel.searchController.stopSources(); settingsController?.model.stopRefreshing(); permissionTimer?.invalidate(); hotKey?.unregister(); manager?.stop() }
+    deinit {
+        if let languageObserver { NotificationCenter.default.removeObserver(languageObserver) }
+        if let shortcutRetryObserver { NSWorkspace.shared.notificationCenter.removeObserver(shortcutRetryObserver) }
+    }
 }

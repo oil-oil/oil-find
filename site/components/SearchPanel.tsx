@@ -30,7 +30,7 @@ export function SearchPanel({ lang }: { lang: Language }) {
   const [raw, setRaw] = useState(''), [chip, setChip] = useState(0), [selected, setSelected] = useState(0);
   const [hover, setHover] = useState(-1);
   const [selectionFromPointer, setSelectionFromPointer] = useState(false);
-  const [measurement, setMeasurement] = useState<readonly [string, string] | null>(null), [toastText, setToastText] = useState<string | null>(null);
+  const [measurement, setMeasurement] = useState<string | null>(null), [toastText, setToastText] = useState<string | null>(null);
   const input = useRef<HTMLInputElement>(null), panel = useRef<HTMLElement>(null), list = useRef<HTMLDivElement>(null), rows = useRef<HTMLDivElement>(null);
   const selectionPlate = useRef<HTMLDivElement>(null);
   const pill = useRef<HTMLSpanElement>(null), chipButtons = useRef<(HTMLButtonElement | null)[]>([]), currentChip = useRef(chip), placed = useRef(false);
@@ -40,7 +40,7 @@ export function SearchPanel({ lang }: { lang: Language }) {
   const home = query.empty && !KINDS[chip];
   const results = useMemo(() => files.filter(file => match(file, query, KINDS[chip])), [files, query, chip]);
   const count = home ? t.home.length : results.length;
-  const status = measurement ? t.statusReplay(...measurement) : home ? t.statusHome(count) : t.statusDemo(count);
+  const status = measurement ? t.statusReplay(measurement) : home ? t.statusHome(count) : t.statusDemo(count);
 
   const stopReplay = useCallback(() => { replaying.current = false; clearTimeout(replayTimer.current); }, []);
   const search = useCallback((text: string) => {
@@ -84,8 +84,8 @@ export function SearchPanel({ lang }: { lang: Language }) {
         }, 3400);
         return;
       }
-      const [text, hits, ms] = RUN[index];
-      search(text); setMeasurement([hits, ms]);
+      const [text, hits] = RUN[index];
+      search(text); setMeasurement(hits);
       replayTimer.current = setTimeout(() => replay(index + 1), CADENCE[index]);
     };
     if (replaying.current) replayTimer.current = setTimeout(() => replay(0), 1700);

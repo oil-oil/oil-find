@@ -1,0 +1,28 @@
+.section { scroll-margin-top: 76px; }
+.card { overflow: hidden; }
+.tabs { display: flex; gap: 4px; padding: 12px; border-bottom: 1px solid var(--hair); overflow-x: auto; scrollbar-width: thin; }
+.tabs button { flex: none; padding: 8px 12px; border: 0; border-radius: 9px; background: transparent; color: var(--ink2); font: 500 13px var(--ui); cursor: pointer; }
+.tabs button:hover { background: rgba(29, 29, 31, .05); color: var(--ink); }
+.tabs button.active { background: rgba(47, 124, 246, .13); color: var(--blue-deep); }
+.body { min-height: 216px; padding: 20px 24px; }
+.field, .select { display: grid; gap: 8px; color: var(--ink2); font: 12px var(--ui); }
+.field input, .select select { width: 100%; min-height: 42px; padding: 0 12px; border: 1px solid var(--hair); border-radius: 9px; outline-color: var(--blue); background: var(--paper); color: var(--ink); font: 14px var(--ui); }
+.items { display: grid; gap: 0; margin: 10px 0 0; padding: 0; list-style: none; }
+.items li { display: flex; justify-content: space-between; gap: 16px; padding: 11px 2px; border-bottom: 1px solid var(--hair); font-size: 13px; }
+.items li b { font-weight: 550; }
+.items li span { overflow: hidden; color: var(--ink3); text-overflow: ellipsis; white-space: nowrap; }
+.note { margin: 14px 0 0; color: var(--ink2); font-size: 12px; line-height: 1.65; }
+.result { display: flex; align-items: center; justify-content: space-between; padding: 18px 0; color: var(--ink2); font-size: 13px; }
+.result b { color: var(--ink); font: 600 28px var(--display); }
+.form { display: grid; grid-template-columns: minmax(0, 1fr) 180px auto; align-items: end; gap: 12px; }
+.submit { min-height: 42px; padding: 0 16px; border: 0; border-radius: 9px; background: var(--blue); color: white; font: 550 13px var(--ui); cursor: pointer; }
+.submit:hover { background: var(--blue-deep); }
+.url { display: inline-block; margin-top: 12px; color: var(--blue-deep); font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
+.footer { padding: 10px 24px; border-top: 1px solid var(--hair); color: var(--ink3); font: 11px var(--mono); }
+@media (max-width: 640px) {
+  .tabs { padding: 8px; }
+  .tabs button { padding-inline: 10px; }
+  .body { min-height: 220px; padding: 16px; }
+  .items li { display: grid; gap: 4px; }
+  .form { grid-template-columns: 1fr; }
+}

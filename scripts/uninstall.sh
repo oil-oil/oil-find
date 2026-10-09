@@ -9,7 +9,8 @@ printf '%s\n' 'The following will be deleted:' \
     '/Applications/Oil Find.app' \
     "$HOME/Library/Application Support/Oil Find" \
     'Settings: com.oiloil.find' \
-    'Legacy authorization item: com.oiloil.find.trial'
+    'Legacy authorization item: com.oiloil.find.trial' \
+    'Clipboard encryption key: com.oiloil.find.clipboard-history'
 read -r -p 'Continue? [y/N] ' confirmation
 [[ "$confirmation" == y ]] || exit 0
 
@@ -31,3 +32,4 @@ fi
 rm -rf "/Applications/Oil Find.app" "$HOME/Library/Application Support/Oil Find"
 defaults delete com.oiloil.find >/dev/null 2>&1 || true
 security delete-generic-password -s com.oiloil.find.trial >/dev/null 2>&1 || true
+security delete-generic-password -s com.oiloil.find.clipboard-history -a aes-gcm-v1 >/dev/null 2>&1 || true

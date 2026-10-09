@@ -29,6 +29,7 @@ final class FooterBar: FlippedView {
     private let status = Theme.label(11.5, .regular, .tertiaryLabelColor)
     private let hints = [KeyHint("↩", L10n.text("hint.open")), KeyHint("⌘↩", L10n.text("hint.reveal")), KeyHint("⌘Y", L10n.text("hint.preview")), KeyHint("⌘C", L10n.text("hint.copy"))]
     private let syntax = KeyHint("⌘/", L10n.text("hint.syntax"))
+    private var launcherRow: LauncherRow?
     var warning = false { didSet { status.textColor = warning ? .systemOrange : .tertiaryLabelColor; needsLayout = true } }
     var text: String { get { status.stringValue } set { status.stringValue = newValue } }
     var actionable = false { didSet { hints.forEach { $0.isHidden = !actionable }; needsLayout = true } }
@@ -63,12 +64,43 @@ final class FooterBar: FlippedView {
         syntax.localize(L10n.text("hint.syntax"))
         if let (kind, value) = toastContent { toast.stringValue = Presentation.toastText(kind, value: value, chinese: L10n.chinese) }
         needsLayout = true
+        setRow(launcherRow)
+    }
+    func setRow(_ row: LauncherRow?) {
+        launcherRow = row
+        for (hint, key) in zip(hints, ["open", "reveal", "preview", "copy"]) { hint.localize(L10n.text("hint." + key)) }
+        if let row {
+            switch row {
+            case .file: break
+            case .clipboard:
+                hints[0].localize(L10n.text("clipboard.paste")); hints[3].localize(L10n.text("launcher.copy"))
+            case .answer: hints[0].localize(L10n.text("launcher.copy")); hints[3].localize(L10n.text("launcher.copy"))
+            case .enableClipboard: hints[0].localize(L10n.text("clipboard.enable"))
+            default: hints[3].localize(L10n.text("launcher.copy"))
+            }
+        }
+        needsLayout = true
+    }
+    func showMessage(_ message: String) {
+        toastContent = nil; toastTimer?.invalidate(); toast.stringValue = message
+        Theme.Motion.opacity(status, to: 0, using: nil); Theme.Motion.opacity(toast, to: 1, using: nil)
+        toastTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: false) { [weak self] _ in
+            guard let self else { return }; self.toast.alphaValue = 0; self.status.alphaValue = 1
+        }
     }
     deinit { toastTimer?.invalidate() }
     override func layout() {
         super.layout()
-        let visibleHints = actionable && !warning ? hints + [syntax] : [syntax]
+        let applicable: [KeyHint]
+        switch launcherRow {
+        case .file, nil: applicable = hints
+        case .clipboard(let entry): applicable = entry.filePaths == nil ? [hints[0], hints[2], hints[3]] : hints
+        case .enableClipboard: applicable = [hints[0]]
+        default: applicable = [hints[0], hints[3]]
+        }
+        let visibleHints = actionable && !warning ? applicable + [syntax] : [syntax]
         hints.forEach { $0.isHidden = !actionable || warning }
+        for hint in hints where !applicable.contains(where: { $0 === hint }) { hint.isHidden = true }
         var x = bounds.width - 18 - visibleHints.reduce(0) { $0 + $1.desiredWidth } - CGFloat(visibleHints.count - 1) * 10
         status.frame = NSRect(x: 22, y: 9, width: max(0, x - 38), height: 16)
         toast.frame = status.frame

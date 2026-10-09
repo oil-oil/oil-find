@@ -63,7 +63,7 @@ final class FilterBar: FlippedView, NSMenuDelegate {
         Theme.Motion.frame(capsule, to: buttons[Int(options.kind ?? 0)].frame, using: animated && !Theme.Motion.reduced ? Theme.Motion.chip : nil)
     }
     func select(_ index: Int) {
-        guard !isHidden, isEnabled else { return }
+        guard isEnabled, buttons.indices.contains(index) else { return }
         options.kind = index == 0 ? nil : UInt8(index)
         onChange?()
     }

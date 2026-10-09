@@ -76,6 +76,7 @@ final class SearchPanel: NSPanel {
     private(set) var hiding = false
     private var animationGeneration = 0
     private var fade: WindowFade?
+    private var hideCompletions: [() -> Void] = []
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
     init(snapshot: Bool = false) {
@@ -95,6 +96,8 @@ final class SearchPanel: NSPanel {
         if isVisible && isKeyWindow && !hiding { hide(source: source) } else { show(source: source) }
     }
     func show(source: PanelSource = .interaction) {
+        hideCompletions.removeAll()
+        if !isVisible || hiding { searchController.pasteController.captureTarget() }
         let cold = !isVisible
         if cold {
             let mouse = NSEvent.mouseLocation
@@ -119,8 +122,10 @@ final class SearchPanel: NSPanel {
         fade = WindowFade(window: self, target: 1, duration: Theme.Motion.reduced ? Theme.Motion.reducedFade : Theme.Motion.panelInFade, curve: .easeOut)
         fade?.start()
     }
-    func hide(source: PanelSource = .interaction) {
-        guard isVisible, !hiding else { return }
+    func hide(source: PanelSource = .interaction, completion: (() -> Void)? = nil) {
+        guard isVisible else { completion?(); return }
+        if let completion { hideCompletions.append(completion) }
+        guard !hiding else { return }
         AppLog.logger.info("panel hide source=\(source.rawValue, privacy: .public)")
         animationGeneration += 1; let token = animationGeneration
         hiding = true; fade?.stop(); searchController.results.cancelPress()
@@ -130,7 +135,9 @@ final class SearchPanel: NSPanel {
         }
         fade = WindowFade(window: self, target: 0, duration: Theme.Motion.reduced ? Theme.Motion.reducedFade : Theme.Motion.panelOut, curve: .easeIn) { [weak self] in
             guard let self, self.hiding, self.animationGeneration == token else { return }
-            self.orderOut(nil); self.searchController.quickLook.close(); self.hiding = false
+            self.orderOut(nil); self.searchController.panelDidHide(); self.hiding = false
+            let callbacks = self.hideCompletions; self.hideCompletions.removeAll()
+            callbacks.forEach { $0() }
         }
         fade?.start()
     }

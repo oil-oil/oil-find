@@ -7,20 +7,58 @@ permissions:
 
 jobs:
   build-and-test:
-    runs-on: macos-14
+    runs-on: macos-15
     env:
       CI: "true"
+      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
+      MACOSX_DEPLOYMENT_TARGET: "14.0"
     steps:
       - name: Checkout
         uses: actions/checkout@v6
         with:
           persist-credentials: false
-      - name: Show Swift toolchain
-        run: swift --version
+      - name: Check Swift toolchain and SDK
+        # runner-images macos-15-Readme.md lists Xcode 16.4 with macOS SDK 15.5.
+        run: |
+          xcodebuild -version
+          swift --version
+          sdk_version="$(xcrun --sdk macosx --show-sdk-version)"
+          IFS=. read -r major minor patch <<< "$sdk_version"
+          if (( major < 15 || (major == 15 && minor < 4) )); then
+            echo "macOS SDK >= 15.4 is required; found $sdk_version" >&2
+            exit 1
+          fi
       - name: Build Swift app
         run: swift build
       - name: Test Swift app
         run: swift test
+      - name: Verify encrypted clipboard history across signed upgrades
+        timeout-minutes: 10
+        run: scripts/verify-clipboard-upgrade.sh
+      - name: Build Swift release
+        run: swift build -c release
+      - name: Build and verify release app
+        run: |
+          scripts/build-app.sh
+          scripts/verify-release-app.sh "build/Oil Find.app"
+          ditto -c -k --sequesterRsrc --keepParent "build/Oil Find.app" build/Oil-Find-ci.zip
+          archive_check="$(mktemp -d)"
+          trap 'rm -rf "$archive_check"' EXIT
+          ditto -x -k build/Oil-Find-ci.zip "$archive_check"
+          scripts/verify-release-app.sh "$archive_check/Oil Find.app"
+      - name: Upload verified release app
+        uses: actions/upload-artifact@v4
+        with:
+          name: Oil-Find-release-${{ runner.arch }}
+          path: build/Oil-Find-ci.zip
+          if-no-files-found: error
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+      - name: Test Python scripts
+        run: |
+          uv run --no-project python3 Tests/Scripts/test_build_app.py
+          uv run --no-project python3 Tests/Scripts/test_compare_engine_performance.py
+          uv run --no-project python3 Tests/Scripts/test_uninstall.py
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
         with:
