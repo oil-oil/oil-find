@@ -48,8 +48,8 @@ describe.each(['zh', 'en'] as const)('Pro introduction (%s)', lang => {
     expect(html).toContain(`href="${pagePath(lang === 'zh' ? 'en' : 'zh', 'pro')}"`);
     const metadata = lang === 'zh' ? zhMetadata : enMetadata;
     expect(metadata.title).toBe(proCopy[lang].pageTitle);
-    expect(metadata.description).toBe(proCopy[lang].subtitle);
-    expect(metadata.alternates?.languages).toEqual({ 'zh-CN': '/pro', en: '/en/pro' });
+    expect(metadata.description).toBe(proCopy[lang].description);
+    expect(metadata.alternates?.languages).toEqual({ 'zh-CN': '/pro', en: '/en/pro', 'x-default': '/en/pro' });
   });
   it('links to the localized Pro page from other pages', () => {
     for (const page of ['activated', 'recover', 'changelog'] as const) {

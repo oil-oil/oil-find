@@ -9,10 +9,11 @@ import { OpenSource } from './OpenSource';
 import { SiteFooter } from './SiteFooter';
 import { SearchProvider } from './SearchContext';
 import styles from './Landing.module.css';
+import { StructuredData } from './StructuredData';
 
 export function Landing({ lang }: { lang: Language }) {
   const t = dict[lang];
-  return <><TopBar lang={lang} /><main><SearchProvider>
+  return <><StructuredData lang={lang} page="home" /><TopBar lang={lang} /><main><SearchProvider>
     <section className={styles.hero}>
       <div className={styles.intro}>
         <Image className={styles.appIcon} src="/assets/icon.png" width={80} height={80} alt="" unoptimized />

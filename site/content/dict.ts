@@ -70,8 +70,8 @@ export const GITHUB_URL = 'https://github.com/oil-oil/oil-find';
 
 export const dict: Record<Language, LandingCopy> = {
   zh: {
-    title: 'Oil Find：不到 10 毫秒，找到 Mac 上的任何文件',
-    description: '按 ⇧⌘F，屏幕正中弹出搜索框。85 万个文件，每敲一个键不到 10 毫秒出结果。支持拼音、通配符和实时更新。免费开源。',
+    title: "Oil Find：苹果版的 Everything，免费开源的 Mac 文件搜索工具",
+    description: "按 ⇧⌘F，屏幕正中弹出搜索框，每敲一个键不到 10 毫秒出结果。支持拼音首字母、通配符、正则和实时更新，不依赖 Spotlight。免费开源，Pro 还能搜外置硬盘和图片里的文字。",
     'nav.speed': '速度', 'nav.syntax': '语法', 'nav.github': 'GitHub', 'nav.download': '下载', 'nav.lang': 'EN',
     lead: ['不到 10 毫秒，', '找到 Mac 上的任何文件'],
     placeholder: '在这里试试：wd、png、readme',
@@ -123,8 +123,8 @@ export const dict: Record<Language, LandingCopy> = {
     ],
   },
   en: {
-    title: 'Oil Find: any file on your Mac in under 10 ms',
-    description: 'Press ⇧⌘F and a search field appears at the center of your screen. 850,000 files, under 10 ms per keystroke. Pinyin, wildcards and live updates. Free and open source.',
+    title: "Oil Find: Everything for Mac, a free and open-source file search app",
+    description: "Press ⇧⌘F and results appear with every keystroke, in under 10 ms. Wildcards, regex, pinyin and live updates, without Spotlight. Free and open source; Pro adds external drives and search inside images.",
     'nav.speed': 'Speed', 'nav.syntax': 'Syntax', 'nav.github': 'GitHub', 'nav.download': 'Download', 'nav.lang': '中文',
     lead: ['Any file on your Mac, ', 'in under 10 ms'],
     placeholder: 'Try it here: wd, png, readme',
@@ -212,7 +212,6 @@ export const commonCopy = {
   loadingLabel: 'Loading',
   emailLabel: 'Email',
   emailPlaceholder: 'you@example.com',
-  ogDescription: '不到 10 毫秒，找到 Mac 上的任何文件。',
   stats: [['3.3', 's', 'stat.scan'], ['45', 'MB', 'stat.mem'], ['< 1', 's', 'stat.live']],
 } as const;
 
@@ -220,7 +219,8 @@ export const commonCopy = {
 export const proCopy = {
   zh: {
     title: 'Oil Find Pro',
-    pageTitle: 'Oil Find Pro：外置磁盘与图片内容搜索',
+    pageTitle: "Oil Find Pro：搜外置硬盘和图片里的文字",
+    description: "外置硬盘插上就建立索引，拔掉后也能搜到；截图、照片和单据里的文字与画面也能搜，全部在本机识别。¥49 一次买断，可以免费试用 7 天。",
     subtitle: '免费版一直免费，也一直开源。硬盘多、截图多，再升级 Pro。',
     query: '发票',
     rows: [
@@ -248,7 +248,8 @@ export const proCopy = {
   },
   en: {
     title: 'Oil Find Pro',
-    pageTitle: 'Oil Find Pro: external drives and image search',
+    pageTitle: "Oil Find Pro: search external drives and the text inside images",
+    description: "Drives stay searchable after you unplug them, and you can search the text and objects in screenshots and photos, all recognized on your Mac. $9.99 once, with a 7-day free trial.",
     subtitle: 'The free version stays free and open source. If you have lots of drives or screenshots, upgrade to Pro.',
     query: 'invoice',
     rows: [
@@ -275,10 +276,41 @@ export const proCopy = {
     ],
   },
 } satisfies Record<Language, {
-  title: string; pageTitle: string; subtitle: string; query: string;
+  title: string; pageTitle: string; description: string; subtitle: string; query: string;
   rows: { name: string; detail: string; date: string }[]; demoDescription: string;
   features: { title: string; description: string }[];
   priceUnit: string; buy: string; download: string; fine: string;
   nav: string; footer: string; recover: string; questions: string;
   faq: { q: string; a: string }[];
 }>;
+
+export function footerQuestions(lang: Language): { q: string; a: string }[] {
+  const t = dict[lang];
+  return [
+    ...searchQuestions[lang],
+    ...(['open', 'opensource', 'fda', 'privacy'] as const).map(key => ({ q: t[`note.${key}.h`], a: t[`note.${key}`] })),
+  ];
+}
+
+const searchQuestions: Record<Language, { q: string; a: string }[]> = {
+  "zh": [
+    {
+      "q": "和 Spotlight 有什么不同",
+      "a": "Spotlight 同时搜文件内容、应用和网页，结果多，排序难以预料。Oil Find 只按文件名找，自己维护一份内存索引，每敲一个键都在 10 毫秒内出结果，还支持拼音首字母、通配符和正则。"
+    },
+    {
+      "q": "苹果版的 Everything",
+      "a": "和 Windows 上的 Everything 思路一样：给磁盘上的文件名建一份索引，输入即出结果。Everything 只有 Windows 版，Oil Find 是为 Mac 写的原生应用。"
+    }
+  ],
+  "en": [
+    {
+      "q": "How it differs from Spotlight",
+      "a": "Spotlight searches file contents, apps and the web at once, so results are many and their order is hard to predict. Oil Find finds files by name only, keeps its own in-memory index and answers every keystroke in under 10 ms, with pinyin initials, wildcards and regex."
+    },
+    {
+      "q": "Everything for Mac",
+      "a": "It works like Everything on Windows: an index of every file name on your disk, with results as you type. Everything is Windows-only; Oil Find is a native Mac app."
+    }
+  ]
+};

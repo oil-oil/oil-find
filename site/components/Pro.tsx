@@ -3,6 +3,7 @@ import { TopBar } from './TopBar';
 import { SiteFooter } from './SiteFooter';
 import { ProSection } from './ProSection';
 import styles from './ProSection.module.css';
+import { StructuredData } from './StructuredData';
 
 function Answer({ text }: { text: string }) {
   return text.split(/(\[[^\]]+\]\([^)]+\))/g).map((part, index) => {
@@ -13,7 +14,7 @@ function Answer({ text }: { text: string }) {
 
 export function Pro({ lang }: { lang: Language }) {
   const t = proCopy[lang];
-  return <><TopBar lang={lang} page="pro" /><main>
+  return <><StructuredData lang={lang} page="pro" /><TopBar lang={lang} page="pro" /><main>
     <ProSection lang={lang} standalone />
     <section className={`col sect ${styles.questions}`}>
       <h2>{t.questions}</h2>

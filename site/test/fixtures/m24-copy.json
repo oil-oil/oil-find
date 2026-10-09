@@ -1,0 +1,50 @@
+{
+  "metadata": {
+    "/": {
+      "title": "Oil Find：苹果版的 Everything，免费开源的 Mac 文件搜索工具",
+      "description": "按 ⇧⌘F，屏幕正中弹出搜索框，每敲一个键不到 10 毫秒出结果。支持拼音首字母、通配符、正则和实时更新，不依赖 Spotlight。免费开源，Pro 还能搜外置硬盘和图片里的文字。"
+    },
+    "/en": {
+      "title": "Oil Find: Everything for Mac, a free and open-source file search app",
+      "description": "Press ⇧⌘F and results appear with every keystroke, in under 10 ms. Wildcards, regex, pinyin and live updates, without Spotlight. Free and open source; Pro adds external drives and search inside images."
+    },
+    "/pro": {
+      "title": "Oil Find Pro：搜外置硬盘和图片里的文字",
+      "description": "外置硬盘插上就建立索引，拔掉后也能搜到；截图、照片和单据里的文字与画面也能搜，全部在本机识别。¥49 一次买断，可以免费试用 7 天。"
+    },
+    "/en/pro": {
+      "title": "Oil Find Pro: search external drives and the text inside images",
+      "description": "Drives stay searchable after you unplug them, and you can search the text and objects in screenshots and photos, all recognized on your Mac. $9.99 once, with a 7-day free trial."
+    },
+    "/changelog": {
+      "title": "更新日志 · Oil Find",
+      "description": "Oil Find 每个版本的更新内容。"
+    },
+    "/en/changelog": {
+      "title": "Changelog · Oil Find",
+      "description": "What changed in each version of Oil Find."
+    }
+  },
+  "faq": {
+    "zh": [
+      {
+        "q": "和 Spotlight 有什么不同",
+        "a": "Spotlight 同时搜文件内容、应用和网页，结果多，排序难以预料。Oil Find 只按文件名找，自己维护一份内存索引，每敲一个键都在 10 毫秒内出结果，还支持拼音首字母、通配符和正则。"
+      },
+      {
+        "q": "苹果版的 Everything",
+        "a": "和 Windows 上的 Everything 思路一样：给磁盘上的文件名建一份索引，输入即出结果。Everything 只有 Windows 版，Oil Find 是为 Mac 写的原生应用。"
+      }
+    ],
+    "en": [
+      {
+        "q": "How it differs from Spotlight",
+        "a": "Spotlight searches file contents, apps and the web at once, so results are many and their order is hard to predict. Oil Find finds files by name only, keeps its own in-memory index and answers every keystroke in under 10 ms, with pinyin initials, wildcards and regex."
+      },
+      {
+        "q": "Everything for Mac",
+        "a": "It works like Everything on Windows: an index of every file name on your disk, with results as you type. Everything is Windows-only; Oil Find is a native Mac app."
+      }
+    ]
+  }
+}

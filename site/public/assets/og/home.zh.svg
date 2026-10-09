@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">Oil Find：苹果版的 Everything，按 ⇧⌘F 输入即出结果</title>
+  <desc id="desc">左侧是 ⇧ ⌘ F 三个键帽和产品名 Oil Find，右侧是一个输入了 readme 的搜索框，三条结果里匹配的部分标成蓝色。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f5f7fa"/>
+      <stop offset="1" stop-color="#e3e8ef"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.86" cy="0.02" r="0.62">
+      <stop offset="0" stop-color="#2f7cf6" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#2f7cf6" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+
+  <g id="title-block" transform="translate(64 104)">
+    <g transform="translate(0 56)">
+      <g transform="translate(0 0)">
+      <rect x="0" y="3" width="58" height="58" rx="13" fill="#c9ced8"/>
+      <rect x="0" y="0" width="58" height="58" rx="13" fill="#ffffff" stroke="#d3d8e1"/>
+      <text x="29" y="40" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'PingFang SC', 'Helvetica Neue', sans-serif" font-size="27" font-weight="500" fill="#1d1d1f">⇧</text>
+    </g>
+      <g transform="translate(68 0)">
+      <rect x="0" y="3" width="58" height="58" rx="13" fill="#c9ced8"/>
+      <rect x="0" y="0" width="58" height="58" rx="13" fill="#ffffff" stroke="#d3d8e1"/>
+      <text x="29" y="40" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'PingFang SC', 'Helvetica Neue', sans-serif" font-size="27" font-weight="500" fill="#1d1d1f">⌘</text>
+    </g>
+      <g transform="translate(136 0)">
+      <rect x="0" y="3" width="58" height="58" rx="13" fill="#c9ced8"/>
+      <rect x="0" y="0" width="58" height="58" rx="13" fill="#ffffff" stroke="#d3d8e1"/>
+      <text x="29" y="40" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'PingFang SC', 'Helvetica Neue', sans-serif" font-size="27" font-weight="500" fill="#1d1d1f">F</text>
+    </g>
+    </g>
+    <text x="0" y="158" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'PingFang SC', 'Helvetica Neue', sans-serif" font-size="19" letter-spacing="1" fill="#8a8f98">Mac 文件搜索工具</text>
+    <text x="-4" y="236" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'PingFang SC', 'Helvetica Neue', sans-serif" font-size="88" font-weight="700" letter-spacing="-2" fill="#1d1d1f">Oil Find</text>
+    <text x="0" y="288" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'PingFang SC', 'Helvetica Neue', sans-serif" font-size="25" fill="#4a4e57">苹果版的 Everything。</text>
+    <text x="0" y="324" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'PingFang SC', 'Helvetica Neue', sans-serif" font-size="25" fill="#4a4e57">按 ⇧⌘F，输入即出结果。</text>
+    <text x="0" y="368" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18" fill="#8a8f98">macOS 14+  ·  Apple 芯片  ·  开源 · MIT</text>
+  </g>
+
+  <g id="search-proof" transform="translate(680 152)">
+    <rect x="0" y="6" width="456" height="326" rx="22" fill="#1d2b44" opacity="0.07"/>
+    <rect x="0" y="0" width="456" height="326" rx="22" fill="#ffffff" stroke="#dde2ea"/>
+    <circle cx="36" cy="38" r="9" fill="none" stroke="#7c818b" stroke-width="2.4"/>
+    <path d="M43 45 L50 52" stroke="#7c818b" stroke-width="2.4" stroke-linecap="round"/>
+    <text x="66" y="48" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'PingFang SC', 'Helvetica Neue', sans-serif" font-size="27" fill="#1d1d1f">readme</text>
+    <rect x="160" y="22" width="2.6" height="32" rx="1.3" fill="#2f7cf6"/>
+    <line x1="0" y1="74" x2="456" y2="74" stroke="#e8ebf0"/>
+    <g>
+      <rect x="10" y="89" width="436" height="58" rx="12" fill="#dde8fd"/>
+      <path d="M30 104 h13 l7 7 v19 a2 2 0 0 1 -2 2 h-18 a2 2 0 0 1 -2 -2 v-24 a2 2 0 0 1 2 -2 z M43 104 v7 h7" fill="#ffffff" stroke="#8a8f98" stroke-width="1.6" stroke-linejoin="round"/>
+      <text x="70" y="112" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'PingFang SC', 'Helvetica Neue', sans-serif" font-size="22" fill="#1d1d1f"><tspan fill="#2f7cf6" font-weight="700">README</tspan>.md</text>
+      <text x="70" y="137" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'PingFang SC', 'Helvetica Neue', sans-serif" font-size="18" fill="#7c818b">~/Developer/tidepool</text>
+      
+      <path d="M28 174 a3 3 0 0 1 3 -3 h7 l3 3 h11 a3 3 0 0 1 3 3 v15 a3 3 0 0 1 -3 3 h-21 a3 3 0 0 1 -3 -3 z" fill="#8fbdf7" stroke="#5b9cf0" stroke-width="1.4"/>
+      <text x="70" y="178" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'PingFang SC', 'Helvetica Neue', sans-serif" font-size="22" fill="#1d1d1f"><tspan fill="#2f7cf6" font-weight="700">readme</tspan>-assets</text>
+      <text x="70" y="203" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'PingFang SC', 'Helvetica Neue', sans-serif" font-size="18" fill="#7c818b">~/Developer/tidepool/docs</text>
+      
+      <path d="M30 236 h13 l7 7 v19 a2 2 0 0 1 -2 2 h-18 a2 2 0 0 1 -2 -2 v-24 a2 2 0 0 1 2 -2 z M43 236 v7 h7" fill="#ffffff" stroke="#8a8f98" stroke-width="1.6" stroke-linejoin="round"/>
+      <text x="70" y="244" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'PingFang SC', 'Helvetica Neue', sans-serif" font-size="22" fill="#1d1d1f"><tspan fill="#2f7cf6" font-weight="700">README</tspan>.md</text>
+      <text x="70" y="269" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'PingFang SC', 'Helvetica Neue', sans-serif" font-size="18" fill="#7c818b">~/Developer/tidepool/node_modules/vite</text>
+    </g>
+    <line x1="0" y1="290" x2="456" y2="290" stroke="#e8ebf0"/>
+    <text x="24" y="315" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="17" fill="#8a8f98">共 5,156 项 · 0.6 ms</text>
+  </g>
+</svg>
