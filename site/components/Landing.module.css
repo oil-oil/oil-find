@@ -15,7 +15,8 @@
 .download:active { transform: scale(.97); transition-duration: .06s; }
 .reassurance { margin: 14px 0 0; font: 14px/1.6 var(--ui); color: var(--ink2); }
 .preview { --col: 800px; margin-top: 36px; }
-.fine { margin: 24px 0 0; font-size: 13px; line-height: 1.7; color: var(--ink2); }
+.sourceLink { display: inline-block; margin-top: 6px; font-size: 13px; color: var(--blue-deep); }
+.sourceLink:hover { text-decoration: underline; }
 
 @keyframes arrive { from { opacity: 0; transform: translateY(10px) scale(.98); } }
 

@@ -6,14 +6,11 @@ import EnHome from '@/app/en/page';
 import ZhPro, { metadata as zhMetadata } from '@/app/(zh)/pro/page';
 import EnPro, { metadata as enMetadata } from '@/app/en/pro/page';
 import { TopBar } from '@/components/TopBar';
-import { pagePath, proCopy, type Language } from '@/content/dict';
+import { dict, pagePath, proCopy, type Language } from '@/content/dict';
 import { ICONS } from '@/content/icons';
 import { GET } from '@/app/api/price/route';
 import { loadPriceDisplay } from '@/lib/price';
-import specification from './fixtures/m23-copy.json';
-import clarity from './fixtures/m28-copy.json';
 
-// Exact copy follows M23 with the M27s and M29 updates.
 const plain = (s: string) => s.replace(/\*\*/g, '').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
 function text(html: string) {
   return html.replace(/<[^>]+>/g, '').replace(/&#x27;|&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&');
@@ -21,35 +18,47 @@ function text(html: string) {
 
 describe.each(['zh', 'en'] as const)('Pro introduction (%s)', lang => {
   const pages = lang === 'zh' ? [ZhHome, ZhPro] : [EnHome, EnPro];
-  it.each(pages)('renders every section copy key through the actual page entry', Page => {
+  it.each(pages)('renders the Pro identity, search examples and relevant actions', Page => {
     const html = renderToStaticMarkup(createElement(Page));
     const section = html.match(/<section[^>]*id="pro"[^>]*>([\s\S]*?)<\/section>/)![1];
-    const rendered = text(section), expected = specification[lang];
-    for (const [key, value] of Object.entries(expected)) {
-      if (key === 'faq' || key === '页脚' || key === '顶栏入口') continue;
-      for (const part of (value as string).split(' ／ ')) expect(rendered).toContain(plain(part));
+    const rendered = text(section), t = proCopy[lang];
+    expect(rendered).toContain(t.title);
+    expect(rendered).toContain(t.headline);
+    expect(rendered).toContain(t.subtitle);
+    expect(section).toContain('src="/assets/pro-icon.png"');
+    expect(rendered).toContain(t.trialNote);
+    for (const row of t.rows) {
+      expect(rendered).toContain(plain(row.name));
+      expect(rendered).toContain(plain(row.detail));
     }
     expect(section).toContain('aria-hidden="true"');
     expect(section).toContain(`<mark>${proCopy[lang].query}</mark>`);
-    expect(section.match(/<h3>/g)).toHaveLength(3);
+    for (const feature of t.features) expect(rendered).toContain(feature.title);
     const documentRow = proCopy[lang].rows[3];
     expect(rendered).toContain(documentRow.name);
     const documentIconStart = section.lastIndexOf('<svg', section.indexOf(documentRow.name));
     expect(section.slice(documentIconStart, section.indexOf('</svg>', documentIconStart))).toContain(ICONS.file);
     expect(section.match(/<mark>/g)).toHaveLength(3);
-    expect(section).toContain(`/api/checkout?plan=lifetime&amp;lang=${lang}`);
+    if (Page === pages[1]) {
+      expect(section).toContain(`/api/checkout?plan=lifetime&amp;lang=${lang}`);
+      for (const term of t.terms) expect(rendered).toContain(term);
+      for (const feature of t.features) expect(rendered).toContain(feature.description);
+    } else {
+      expect(section).not.toContain('/api/checkout');
+      expect(rendered).toContain(t.learn);
+    }
     expect(section).toContain('href="/downloads/Oil-Find.zip"');
     expect(html).toContain(`href="${pagePath(lang, 'pro')}"`);
     expect(html).toContain(`href="${pagePath(lang, 'recover')}"`);
     expect(text(html)).toContain(proCopy[lang].recover);
     if (Page === pages[0]) {
-      expect(html.indexOf('id="open-source"')).toBeLessThan(html.indexOf('id="pro"'));
-      expect(html).toContain('href="#pro"');
+      expect(html).not.toContain('id="open-source"');
+      expect(text(html)).toContain(dict[lang].dl);
     }
   });
   it('renders every FAQ verbatim, localized recovery and metadata', () => {
     const html = renderToStaticMarkup(createElement(pages[1]));
-    for (const [q, a] of specification[lang].faq) {
+    for (const { q, a } of proCopy[lang].faq) {
       expect(text(html)).toContain(q); expect(text(html)).toContain(plain(a));
     }
     expect(text(html)).toContain(proCopy[lang].questions);
@@ -70,34 +79,33 @@ describe.each(['zh', 'en'] as const)('Pro introduction (%s)', lang => {
 describe.each(['zh', 'en'] as const)('Free vs Pro clarity (%s)', lang => {
   const Home = lang === 'zh' ? ZhHome : EnHome;
   const Pro = lang === 'zh' ? ZhPro : EnPro;
-  const expected = clarity[lang];
-  it('renders the exact open-source scope and a localized comparison link below the fine print', () => {
+  it('keeps free download and open source upfront, with a direct localized Pro entry', () => {
     const html = renderToStaticMarkup(createElement(Home));
-    expect(text(html)).toContain(expected.sourceSubtitle);
-    expect(text(html.slice(html.indexOf('<footer')))).toContain(expected.footerOpenSource);
+    const hero = html.slice(0, html.indexOf('id="speed"'));
+    expect(text(hero)).toContain(dict[lang].openSource);
+    expect(text(html.slice(html.indexOf('<footer')))).toContain(dict[lang]['note.opensource']);
     const section = html.match(/<section[^>]*id="pro"[^>]*>([\s\S]*?)<\/section>/)![1];
-    const link = renderToStaticMarkup(createElement('a', { href: `${pagePath(lang, 'pro')}#compare` }, expected.compareLink));
-    expect(section).toContain(link);
-    expect(section.indexOf(link)).toBeGreaterThan(section.indexOf(proCopy[lang].fine));
+    expect(section).toContain(`href="${pagePath(lang, 'pro')}"`);
     expect(html).not.toContain('id="compare"');
+    expect(html).not.toContain('id="open-source"');
   });
-  it('renders an accessible three-column comparison after pricing and before the FAQ, with empty Pro-only free cells', () => {
+  it('renders an accessible three-column comparison after pricing and before the FAQ, with explicit Pro-only availability', () => {
     const html = renderToStaticMarkup(createElement(Pro));
     const section = html.match(/<section[^>]*id="compare"[^>]*>([\s\S]*?)<\/section>/)![1];
     expect(html.indexOf('id="compare"')).toBeGreaterThan(html.indexOf('/api/checkout'));
     expect(html.indexOf('id="compare"')).toBeLessThan(html.indexOf(`<h2>${proCopy[lang].questions}</h2>`));
-    expect(text(section)).toContain(expected.compare.title);
-    expect(text(section.match(/<caption[^>]*>([\s\S]*?)<\/caption>/)![1])).toBe(expected.compare.title);
+    expect(text(section)).toContain(proCopy[lang].compare.title);
+    expect(text(section.match(/<caption[^>]*>([\s\S]*?)<\/caption>/)![1])).toBe(proCopy[lang].compare.title);
     expect(section.match(/scope="col"/g)).toHaveLength(3);
     const rows = [...section.matchAll(/<tr>([\s\S]*?)<\/tr>/g)].slice(1);
     expect(rows).toHaveLength(9);
     rows.forEach((row, index) => {
       expect(row[1]).toContain('scope="row"');
       const cells = [...row[1].matchAll(/<(?:th|td)[^>]*>([\s\S]*?)<\/(?:th|td)>/g)].map(cell => text(cell[1]));
-      expect(cells).toEqual(expected.compare.rows[index]);
+      expect(cells).toEqual(proCopy[lang].compare.rows[index]);
     });
-    expect(text(section)).toContain(expected.compare.note);
-    expect(text(html.slice(html.indexOf('<footer')))).toContain(expected.footerOpenSource);
+    expect(text(section)).toContain(proCopy[lang].compare.note);
+    expect(text(html.slice(html.indexOf('<footer')))).toContain(dict[lang]['note.opensource']);
   });
 });
 

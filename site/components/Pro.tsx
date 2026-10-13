@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { proCopy, type Language } from '@/content/dict';
 import { TopBar } from './TopBar';
 import { SiteFooter } from './SiteFooter';
@@ -21,7 +22,13 @@ export function Pro({ lang }: { lang: Language }) {
       <table className={styles.compareTable}>
         <caption className={styles.srOnly}>{t.compare.title}</caption>
         <colgroup><col /><col className={styles.planColumn} /><col className={styles.planColumn} /></colgroup>
-        <thead><tr><th scope="col">{t.compare.feature}</th><th scope="col">{t.compare.free}</th><th scope="col">{t.compare.pro}</th></tr></thead>
+        <thead><tr><th scope="col">{t.compare.feature}</th><th scope="col"><div className={styles.planIdentity}>
+          <Image src="/assets/icon.png" alt="" width={40} height={40} unoptimized />
+          <span>{t.compare.free}</span><small>{t.compare.freeSummary}</small>
+        </div></th><th scope="col"><div className={styles.planIdentity}>
+          <Image src="/assets/pro-icon.png" alt="" width={40} height={40} unoptimized />
+          <span>{t.compare.pro}</span><small>{t.compare.proSummary}</small>
+        </div></th></tr></thead>
         <tbody>{t.compare.rows.map(([feature, free, pro]) => <tr key={feature}>
           <th scope="row">{feature}</th><td>{free}</td><td>{pro}</td>
         </tr>)}</tbody>

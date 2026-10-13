@@ -1,11 +1,10 @@
 import Image from 'next/image';
-import { dict, type Language } from '@/content/dict';
+import { dict, GITHUB_URL, type Language } from '@/content/dict';
 import { TopBar } from './TopBar';
 import { SearchPanel } from './SearchPanel';
 import { SpeedTrace } from './SpeedTrace';
 import { SyntaxSheet } from './SyntaxSheet';
 import { ProSection } from './ProSection';
-import { OpenSource } from './OpenSource';
 import { SiteFooter } from './SiteFooter';
 import { SearchProvider } from './SearchContext';
 import styles from './Landing.module.css';
@@ -23,9 +22,10 @@ export function Landing({ lang }: { lang: Language }) {
           <span>{t.dl}</span>
         </a>
         <p className={styles.reassurance}>{t.downloadNote}</p>
+        <a className={styles.sourceLink} href={GITHUB_URL}>{t.openSource} ↗</a>
       </div>
       <div className={styles.preview}><SearchPanel lang={lang} /></div>
     </section>
-    <SpeedTrace lang={lang} /><SyntaxSheet lang={lang} /><OpenSource lang={lang} /><ProSection lang={lang} />
+    <SpeedTrace lang={lang} /><SyntaxSheet lang={lang} /><ProSection lang={lang} />
   </SearchProvider></main><SiteFooter lang={lang} /></>;
 }

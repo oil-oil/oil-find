@@ -18,6 +18,7 @@ interface LandingCopy {
   sort: string;
   dl: string;
   downloadNote: string;
+  openSource: string;
   toastDemo: string;
   noneTitle: string;
   noneBody: string;
@@ -37,8 +38,6 @@ interface LandingCopy {
   'speed.fine': string;
   'syn.h': string;
   'syn.sub': string;
-  'source.h': string;
-  'source.sub': string;
   'source.download': string;
   'source.github': string;
   'note.open.h': string;
@@ -76,8 +75,9 @@ export const dict: Record<Language, LandingCopy> = {
     lead: ['不到 10 毫秒，', '找到 Mac 上的任何文件'],
     placeholder: '在这里试试：wd、png、readme',
     sort: '相关度 ⇅',
-    dl: '下载 macOS 版',
-    downloadNote: '免费开源。macOS 14 及以上，Apple 芯片',
+    dl: '免费下载 macOS 版',
+    downloadNote: 'macOS 14 及以上 · Apple 芯片',
+    openSource: '免费开源',
     'speed.h': '每个键，都在一帧之内',
     'speed.sub': '连续输入 readme。索引里有 851,420 个文件，下面是每个键的实测耗时。',
     'speed.frame': '一帧 16.7 ms',
@@ -85,8 +85,6 @@ export const dict: Record<Language, LandingCopy> = {
     'speed.fine': '数据来自一台 Apple 芯片的 Mac，默认索引范围。连续输入时只在上一次的结果里收窄，所以越敲越快。',
     'syn.h': '想找得更准，就多写一点',
     'syn.sub': '点一行，把它填进上面的搜索框。',
-    'source.h': '开源，免费',
-    'source.sub': '免费版用 MIT 许可证开源，代码、问题反馈和新版本都在 GitHub 上。Pro 是另外的闭源付费功能，不影响免费版。',
     'source.download': '下载 macOS 版',
     'source.github': '在 GitHub 上查看',
     'note.open.h': '第一次打开', 'note.open': '应用还没有经过苹果公证。双击后如果被拦下，去「系统设置 → 隐私与安全性」，在底部点「仍要打开」。只需要一次。',
@@ -129,8 +127,9 @@ export const dict: Record<Language, LandingCopy> = {
     lead: ['Any file on your Mac, ', 'in under 10 ms'],
     placeholder: 'Try it here: wd, png, readme',
     sort: 'Relevance ⇅',
-    dl: 'Download for macOS',
-    downloadNote: 'Free and open source. macOS 14 or later, Apple silicon',
+    dl: 'Download Free for macOS',
+    downloadNote: 'macOS 14 or later · Apple silicon',
+    openSource: 'Free and open source',
     'speed.h': 'Every keystroke lands within one frame',
     'speed.sub': 'Typing readme against an index of 851,420 files. Measured time for each key.',
     'speed.frame': 'one frame, 16.7 ms',
@@ -138,8 +137,6 @@ export const dict: Record<Language, LandingCopy> = {
     'speed.fine': 'Measured on an Apple silicon Mac with the default index scope. Each new letter only narrows the previous result, so it gets faster as you type.',
     'syn.h': 'Write a little more to find exactly that',
     'syn.sub': 'Click a row to try it in the search field above.',
-    'source.h': 'Open source and free',
-    'source.sub': 'The free version is open source under the MIT license; code, issues and releases all live on GitHub. Pro is a separate closed-source paid add-on and doesn’t change the free version.',
     'source.download': 'Download for macOS',
     'source.github': 'View on GitHub',
     'note.open.h': 'Opening it the first time', 'note.open': 'The app isn’t notarized by Apple yet. If macOS blocks it, go to System Settings → Privacy & Security and click “Open Anyway” at the bottom. Once is enough.',
@@ -221,7 +218,12 @@ export const proCopy = {
     title: 'Oil Find Pro',
     pageTitle: "Oil Find Pro：搜图片和文档里的文字，拔掉的硬盘也能搜",
     description: "截图、照片里的文字与画面，PDF、Word 等文档里的文字都能搜，全部在本机处理；外置硬盘拔掉后也能搜到。¥49 一次买断，可以免费试用 7 天。",
-    subtitle: "免费版一直免费，也一直开源。截图和文档多、硬盘常插拔，再升级 Pro。",
+    headline: '搜图片和文档里的内容。',
+    subtitle: '在免费版的快速搜索之上，搜图片和文档里的内容，保留离线硬盘的文件目录。',
+    learn: '了解 Pro',
+    trialNote: '使用同一个安装包，在设置里开启 7 天免费试用。',
+    trialReassurance: '无需注册或绑卡，试用结束后仍可使用免费版。',
+    terms: ['可用于 3 台 Mac', '包含以后所有更新', '14 天内可全额退款'],
     query: '发票',
     rows: [
       { name: '截屏2026-09-28 14.02.11.png', detail: '图中文字：…开具**发票**的日期… · ~/Desktop', date: '9月28日' },
@@ -231,25 +233,25 @@ export const proCopy = {
     ],
     demoDescription: '示例：搜索「发票」时，同时找到截图里的文字、拔掉的移动硬盘上的文件、拍到收据的照片和合同正文里的内容。',
     features: [
-      { title: '图片内容', description: '搜截图、照片和拍下的单据里的文字与画面。' },
-      { title: '文档内容', description: '搜 PDF、Word、PowerPoint、Excel、Pages、Markdown 和纯文本里的文字，扫描版 PDF 也能识别。' },
-      { title: "拔掉的硬盘也能搜", description: "外置磁盘拔掉后，上面的文件仍然能搜到，结果会标出在哪块盘上。" },
+      { title: '搜图片里的文字与画面', description: '搜截图、照片和拍下的单据里的文字与画面。' },
+      { title: '搜文档正文', description: '搜 PDF、Word、PowerPoint、Excel、Pages、Markdown 和纯文本里的文字，扫描版 PDF 也能识别。' },
+      { title: "搜拔掉的硬盘", description: "外置磁盘拔掉后，上面的文件仍然能搜到，结果会标出在哪块盘上。" },
     ],
     privacy: '图片和文档都在这台 Mac 上处理，不会上传。',
     priceUnit: '一次买断', buy: '购买 Pro', download: '下载试用',
-    fine: '下载 Oil Find 后，在设置里点「免费试用 7 天」，不用注册，不用绑卡。买断包含以后所有更新，一个授权可以在 3 台 Mac 上使用。支持银行卡和支付宝，在中国大陆还可以用微信支付。14 天内不满意，全额退款。',
     nav: 'Pro', footer: 'Oil Find Pro', recover: '找回授权码', questions: '常见问题',
-    compareLink: '查看免费版和 Pro 的区别',
+    compareLink: '对比免费版与 Pro',
     compare: {
-      title: '免费版和 Pro 的区别', feature: '功能', free: '免费版', pro: 'Pro',
+      freeSummary: '按文件名快速查找', proSummary: '还能搜内容与离线硬盘',
+      title: '选择适合你的搜索方式', feature: '功能', free: '免费版', pro: 'Pro',
       rows: [
         ['按文件名搜索：拼音、通配符、正则，按类型、大小、时间筛选', '✓', '✓'],
         ['实时更新、Quick Look 预览、拖放、全键盘操作', '✓', '✓'],
         ['排除文件夹和文件类型、应用内更新', '✓', '✓'],
         ['外置磁盘：插上就建立索引，实时更新', '✓', '✓'],
-        ['外置磁盘拔掉后也能搜到', '', '✓'],
-        ['图片内容：截图、照片里的文字与画面', '', '✓'],
-        ['文档内容：PDF、Word、PowerPoint、Excel、Pages、Markdown 等', '', '✓'],
+        ['外置磁盘拔掉后也能搜到', '—', '✓'],
+        ['图片内容：截图、照片里的文字与画面', '—', '✓'],
+        ['文档内容：PDF、Word、PowerPoint、Excel、Pages、Markdown 等', '—', '✓'],
         ['源码', '开源，MIT', '闭源'],
         ['价格', '免费', '¥49 一次买断（其他地区 $9.99）'],
       ],
@@ -257,10 +259,11 @@ export const proCopy = {
     },
     faq: [
       { q: '免费版会变少吗？', a: '不会。现在免费的功能会一直免费，也一直开源，Pro 只包含新增的功能。' },
-      { q: '怎么试用？', a: '在 Oil Find 的设置里找到 Oil Find Pro，点「免费试用 7 天」。' },
+      { q: '怎么试用？', a: '下载同一个 Oil Find 安装包，在设置里找到 Oil Find Pro，点「免费试用 7 天」。无需注册或绑定银行卡。' },
       { q: '试用结束之后呢？', a: '只停用 Pro 功能，其他照常可用。外置磁盘目录、图片和文档的索引都留着，激活后立刻恢复。' },
       { q: '图片和文档会上传吗？', a: '不会。识别和读取都在这台 Mac 上完成，结果也只存在本机。' },
       { q: '从源码构建有 Pro 吗？', a: '没有。Pro 不开源，只包含在官网和 GitHub Releases 的安装包里，从源码构建得到的是免费版。' },
+      { q: '买断包含什么？', a: '一次购买可用于 3 台 Mac，包含以后所有更新。14 天内不满意，可以全额退款。支持银行卡和支付宝，中国大陆还支持微信支付。' },
       { q: '换了 Mac 怎么办？', a: '一个授权可以同时用在 3 台 Mac 上。在旧 Mac 的设置里停用，就能用到新的 Mac 上。' },
       { q: '授权码找不到了？', a: '用购买时的邮箱[找回授权码](/recover)。' },
     ],
@@ -269,7 +272,12 @@ export const proCopy = {
     title: 'Oil Find Pro',
     pageTitle: "Oil Find Pro: search inside images and documents on Mac",
     description: "Search the text in screenshots, photos, PDFs and Office documents, all on your Mac, and keep unplugged drives searchable. $9.99 once, 7-day trial.",
-    subtitle: "The free version stays free and open source. If you have lots of screenshots and documents, or drives you plug in and out, upgrade to Pro.",
+    headline: 'Search beyond file names.',
+    subtitle: 'Add image and document content search to Oil Find, and keep your unplugged drives searchable.',
+    learn: 'Explore Pro',
+    trialNote: 'One download. Start your 7-day free trial in Settings.',
+    trialReassurance: 'No account or card. Keep using the free version after your trial.',
+    terms: ['Use on 3 Macs', 'All future updates included', 'Full refund within 14 days'],
     query: 'invoice',
     rows: [
       { name: 'Screenshot 2026-09-28 at 14.02.11.png', detail: 'Text in image: …**invoice** date… · ~/Desktop', date: 'Sep 28' },
@@ -285,19 +293,19 @@ export const proCopy = {
     ],
     privacy: 'Images and documents are processed on your Mac and never uploaded.',
     priceUnit: 'one-time', buy: 'Buy Pro', download: 'Download to Try',
-    fine: 'Download Oil Find and click “Start 7-Day Free Trial” in Settings. No account, no card. One payment includes every future update, and one license works on up to 3 Macs. Pay with card or Alipay, plus WeChat Pay in mainland China. Full refund within 14 days, no questions asked.',
     nav: 'Pro', footer: 'Oil Find Pro', recover: 'Recover License Key', questions: 'Questions',
     compareLink: 'Compare Free and Pro',
     compare: {
-      title: 'Free vs Pro', feature: 'Feature', free: 'Free', pro: 'Pro',
+      freeSummary: 'Fast file name search', proSummary: 'Content and offline drives, too',
+      title: 'Choose how you search', feature: 'Feature', free: 'Free', pro: 'Pro',
       rows: [
         ['Search by file name: pinyin, wildcards, regex, filters by kind, size and date', '✓', '✓'],
         ['Live updates, Quick Look, drag and drop, full keyboard control', '✓', '✓'],
         ['Excluded folders and file types, in-app updates', '✓', '✓'],
         ["External drives: indexed when plugged in, kept up to date", '✓', '✓'],
-        ["External drives stay searchable when unplugged", '', '✓'],
-        ['Image content: text and objects in screenshots and photos', '', '✓'],
-        ['Document content: PDF, Word, PowerPoint, Excel, Pages, Markdown and more', '', '✓'],
+        ["External drives stay searchable when unplugged", '—', '✓'],
+        ['Image content: text and objects in screenshots and photos', '—', '✓'],
+        ['Document content: PDF, Word, PowerPoint, Excel, Pages, Markdown and more', '—', '✓'],
         ['Source code', 'Open source, MIT', 'Closed source'],
         ['Price', 'Free', '$9.99 once (¥49 in mainland China)'],
       ],
@@ -305,22 +313,24 @@ export const proCopy = {
     },
     faq: [
       { q: 'Will the free version lose features?', a: "No. Everything that's free today stays free and open source. Pro only adds new features." },
-      { q: 'How do I try it?', a: 'In Oil Find\'s settings, find Oil Find Pro and click “Start 7-Day Free Trial”.' },
+      { q: 'How do I try it?', a: 'Download Oil Find, then find Oil Find Pro in Settings and click “Start 7-Day Free Trial”. No account or card required.' },
       { q: 'What happens when the trial ends?', a: 'Only Pro features turn off; everything else keeps working. Your drive catalogs and your image and document indexes are kept and come back as soon as you activate.' },
       { q: 'Are my images and documents uploaded?', a: 'No. They are recognized and read on your Mac, and the results stay there.' },
       { q: 'Is Pro in the open-source code?', a: 'No. Pro is closed source and ships only in the builds from this site and GitHub Releases. Building from source gives you the free version.' },
+      { q: 'What does a purchase include?', a: 'One payment covers 3 Macs and all future updates. A full refund is available within 14 days. Pay with card or Alipay, plus WeChat Pay in mainland China.' },
       { q: 'Getting a new Mac?', a: 'One license works on up to 3 Macs at once. Deactivate it in Settings on the old Mac to use it on the new one.' },
       { q: 'Lost your license key?', a: '[Recover it](/en/recover) with the email you used at checkout.' },
     ],
   },
 } satisfies Record<Language, {
-  title: string; pageTitle: string; description: string; subtitle: string; query: string;
+  title: string; pageTitle: string; description: string; headline: string; subtitle: string; query: string;
+  learn: string; trialNote: string; trialReassurance: string; terms: string[];
   rows: { name: string; detail: string; date: string }[]; demoDescription: string;
   features: { title: string; description: string }[]; privacy: string;
-  priceUnit: string; buy: string; download: string; fine: string;
+  priceUnit: string; buy: string; download: string;
   nav: string; footer: string; recover: string; questions: string;
   compareLink: string;
-  compare: { title: string; feature: string; free: string; pro: string; rows: [string, string, string][]; note: string };
+  compare: { freeSummary: string; proSummary: string; title: string; feature: string; free: string; pro: string; rows: [string, string, string][]; note: string };
   faq: { q: string; a: string }[];
 }>;
 

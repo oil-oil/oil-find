@@ -1,5 +1,5 @@
   /* Each height leaves room for whole 50px rows, including the list's 6px inset. */
-  .panel { width: var(--col); max-width: calc(100vw - 32px); height: 448px; margin: 0 auto; border-radius: 22px; background: rgba(255, 255, 255, .9); border: 1px solid rgba(29, 29, 31, .1);
+  .panel { width: 100%; max-width: min(var(--col), calc(100vw - 32px)); height: 448px; margin: 0 auto; border-radius: 22px; background: rgba(255, 255, 255, .9); border: 1px solid rgba(29, 29, 31, .1);
     box-shadow: 0 1px 2px rgba(20, 35, 60, .08), 0 24px 60px rgba(20, 35, 60, .14); -webkit-backdrop-filter: blur(30px) saturate(1.4); backdrop-filter: blur(30px) saturate(1.4);
     display: flex; flex-direction: column; overflow: hidden; }
   .panel.rise { animation: rise .42s var(--spring-panel) var(--rise-delay, .3s) both; }

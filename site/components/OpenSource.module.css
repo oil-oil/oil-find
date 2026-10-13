@@ -1,3 +1,0 @@
-.section { text-align: center; }
-.section > :global(.sub) { margin-bottom: 28px; }
-.actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; }
