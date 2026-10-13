@@ -9,6 +9,21 @@ export const changelogTitle = { zh: '更新日志', en: 'Changelog' };
 // The single source for the website and the packaged update manifest.
 export const releases: Release[] = [
   {
+    version: '1.6.1', date: '2026-10-13',
+    notes: {
+      zh: [
+        '降低后台索引和内容识别的持续 CPU 占用：图片和文档分段处理，打字或重建文件目录时自动暂停内容识别。',
+        '修复文件变化时已识别的内容搜索结果暂时消失的问题，减少重复遍历和识别中断。',
+        '完整文件扫描减少并行线程，为日常搜索和其他应用留出更多资源。首次批量识别会更慢，已完成的内容仍可直接搜索。',
+      ],
+      en: [
+        'Reduced sustained CPU use during background indexing and content recognition. Images and documents are processed with breaks, and content recognition pauses while you type or rebuild the file index.',
+        'Fixed recognized content results temporarily disappearing after file changes, with fewer repeated scans and interrupted recognition tasks.',
+        'Full file scans use fewer parallel threads to leave more resources for searches and other apps. Initial bulk recognition takes longer; content already recognized remains searchable.',
+      ],
+    },
+  },
+  {
     version: '1.6.0', date: '2026-10-12',
     notes: {
       zh: ['外置磁盘搜索现在免费：插上就建立索引并实时更新，在设置的「外置磁盘」里可以逐个关闭。', 'Pro 保留「拔掉后也能搜到」，并继续提供图片和文档内容搜索。', 'Pro 激活后，应用图标会换成戴飞行员墨镜的版本。'],

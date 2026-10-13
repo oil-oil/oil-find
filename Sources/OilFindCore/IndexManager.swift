@@ -190,7 +190,8 @@ public final class IndexManager {
             eventQueue.async { if self.valid(token) { self.locked { self.rescanning = false; if !isRescan { self.active = false } }; if !isRescan { self.setState(.idle) } } }
             return
         }
-        let startId = volumeUUID.flatMap { _ in device(config: config).map(FSWatcher.currentEventId(forDevice:)) } ?? FSWatcher.currentEventId(), scanner = Scanner(config: config)
+        // Background rebuilds keep spare cores for interactive work; CLI benchmarks can still opt into wider scans.
+        let startId = volumeUUID.flatMap { _ in device(config: config).map(FSWatcher.currentEventId(forDevice:)) } ?? FSWatcher.currentEventId(), scanner = Scanner(config: config, threads: min(2, ProcessInfo.processInfo.activeProcessorCount))
         if volumeUUID != nil && uuid == nil {
             eventQueue.sync {
                 guard self.valid(token), let device = self.device(config: config) else { return }

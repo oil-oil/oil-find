@@ -52,6 +52,7 @@ final class SearchViewController: NSViewController, NSWindowDelegate, NSMenuDele
         return primary.map { [$0] + (additionalSources?() ?? []) } ?? (additionalSources?() ?? [])
     }
     func sourcesChanged() {
+        refreshProgress()
         supplementaryProvider?.sourcesDidChange(searchSources)
         _ = generation.next(); results.cancelPendingRefresh(); results.cancelPress()
         if supplementaryProvider?.isEnabled != true, let result = results.result, result.hasSupplements {
@@ -187,6 +188,7 @@ final class SearchViewController: NSViewController, NSWindowDelegate, NSMenuDele
         startSearch(preserveSelection: true)
     }
     func indexChanged() {
+        refreshProgress()
         supplementaryProvider?.sourcesDidChange(searchSources)
         if view.window?.isVisible == true { refreshSearch() }
     }
@@ -197,6 +199,7 @@ final class SearchViewController: NSViewController, NSWindowDelegate, NSMenuDele
     private func refreshProgress() {
         if let result = results.result, result.query.isEmpty { updateFooter(result) }
         guard let manager else { return }
+        supplementaryProvider?.backgroundIndexingChanged(manager.state == .loading || manager.state == .scanning || manager.isRescanning)
         searchField.indexing = manager.state == .scanning || manager.isRescanning
         if manager.store == nil {
             let count = manager.scannedCount

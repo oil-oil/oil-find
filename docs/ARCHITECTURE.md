@@ -227,11 +227,13 @@ playground xcarchive dsym rtfd scptd lproj logicx band screenstudio pages number
 | --- | --- |
 | 主线程 | 界面、结果渲染（读锁内取单行数据） |
 | 搜索队列 | 串行，userInteractive；内部用 `DispatchQueue.concurrentPerform` 分块并行 |
-| 扫描线程 | `activeProcessorCount` 个，utility 优先级 |
+| 扫描线程 | 应用后台完整扫描最多 2 个，utility 优先级；独立扫描器默认使用 `activeProcessorCount` |
 | 事件队列 | 串行，utility；FSEvents 回调与批量应用变更 |
 | 保存队列 | 串行，background |
 
 新查询到来时取消正在执行的旧查询：搜索函数接收 `isCancelled: () -> Bool`，每处理完一个分块检查一次。
+
+宿主通过中性的 `SupplementarySearchProvider.backgroundIndexingChanged` 通知补充搜索提供者主索引正在载入、扫描或重建，便于后台内容处理让出资源。补充命中可携带 `sourceVersion`，合并时必须与名称搜索结果的来源版本一致，避免把旧内容绑定到变化后的文件条目。
 
 ## 结果的有效性
 

@@ -1,21 +1,21 @@
 {
-  "version": "1.6.0",
-  "build": 12,
-  "url": "https://find.oiloil.org/downloads/Oil-Find-1.6.0.zip",
-  "size": 2400296,
-  "sha256": "aad3b80a17afc590cc531bf500abd6fe80406ab074421a27f2b9f13226438fae",
+  "version": "1.6.1",
+  "build": 13,
+  "url": "https://find.oiloil.org/downloads/Oil-Find-1.6.1.zip",
+  "size": 2406921,
+  "sha256": "4860421a35e6bf33397753281ef47c6ce01c9fc9006d1113eeb2e142f6bf7df0",
   "minimumSystemVersion": "14.0",
-  "published": "2026-10-12",
+  "published": "2026-10-13",
   "notes": {
     "zh": [
-      "外置磁盘搜索现在免费：插上就建立索引并实时更新，在设置的「外置磁盘」里可以逐个关闭。",
-      "Pro 保留「拔掉后也能搜到」，并继续提供图片和文档内容搜索。",
-      "Pro 激活后，应用图标会换成戴飞行员墨镜的版本。"
+      "降低后台索引和内容识别的持续 CPU 占用：图片和文档分段处理，打字或重建文件目录时自动暂停内容识别。",
+      "修复文件变化时已识别的内容搜索结果暂时消失的问题，减少重复遍历和识别中断。",
+      "完整文件扫描减少并行线程，为日常搜索和其他应用留出更多资源。首次批量识别会更慢，已完成的内容仍可直接搜索。"
     ],
     "en": [
-      "Searching external drives is now free: drives are indexed when you plug them in and kept up to date, and you can turn off any drive in Settings.",
-      "Pro keeps drives searchable after you unplug them, along with image and document content search.",
-      "When Pro is active, the app icon switches to a version wearing aviators."
+      "Reduced sustained CPU use during background indexing and content recognition. Images and documents are processed with breaks, and content recognition pauses while you type or rebuild the file index.",
+      "Fixed recognized content results temporarily disappearing after file changes, with fewer repeated scans and interrupted recognition tasks.",
+      "Full file scans use fewer parallel threads to leave more resources for searches and other apps. Initial bulk recognition takes longer; content already recognized remains searchable."
     ]
   }
 }

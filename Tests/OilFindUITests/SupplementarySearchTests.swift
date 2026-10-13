@@ -146,4 +146,11 @@ final class SupplementarySearchTests: XCTestCase {
         store.write { store.version += 1 }
         XCTAssertFalse(result.isCurrent([SearchSource(id: "startup", displayName: "", isOnline: true, store: store)]))
     }
+    func testSupplementCannotCrossNameSearchVersions() throws {
+        let store = store(), oldVersion = store.read { store.version }
+        let hit = SupplementaryHit(sourceID: "startup", entryID: 3, detail: "Old content", sourceVersion: oldVersion)
+        store.write { store.version += 1 }
+        let base = SearchPresentation(try XCTUnwrap(Searcher.search(Query.parse("发票"), in: store)))
+        XCTAssertEqual(base.supplement([hit], options: .init()).count, base.count)
+    }
 }

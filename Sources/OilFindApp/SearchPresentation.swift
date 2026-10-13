@@ -32,6 +32,8 @@ final class SearchPresentation {
     }
     func supplement(_ hits: [SupplementaryHit], options: SearchOptions) -> SearchPresentation {
         let captured = sources
+        let versions = single.map { [$0.storeVersion] } ?? multiple!.results.map(\.storeVersion)
+        let sourceVersions = Dictionary(uniqueKeysWithValues: zip(captured.map(\.id), versions))
         func mergeLocked(_ position: Int) -> SearchPresentation {
             if position < captured.count { return captured[position].store.read { mergeLocked(position + 1) } }
             let result = single.map(SearchPresentation.init) ?? SearchPresentation(multiple!)
@@ -39,6 +41,7 @@ final class SearchPresentation {
             var seen = Dictionary(grouping: rows, by: { $0.source.id }).mapValues { Set($0.map(\.id)) }
             var extra: [(source: SearchSource, id: UInt32)] = []
             for hit in hits {
+                if let version = hit.sourceVersion, sourceVersions[hit.sourceID] != version { continue }
                 guard let source = sources.first(where: { $0.id == hit.sourceID }), Int(hit.entryID) < source.store.count && source.store.isLive(hit.entryID) else { continue }
                 result.details[source.id, default: [:]][hit.entryID] = hit
                 if seen[source.id, default: []].insert(hit.entryID).inserted { extra.append((source, hit.entryID)) }
