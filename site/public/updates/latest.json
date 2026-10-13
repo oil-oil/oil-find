@@ -1,21 +1,19 @@
 {
-  "version": "1.6.1",
-  "build": 13,
-  "url": "https://find.oiloil.org/downloads/Oil-Find-1.6.1.zip",
-  "size": 2406921,
-  "sha256": "4860421a35e6bf33397753281ef47c6ce01c9fc9006d1113eeb2e142f6bf7df0",
+  "version": "1.6.2",
+  "build": 14,
+  "url": "https://find.oiloil.org/downloads/Oil-Find-1.6.2.zip",
+  "size": 2406639,
+  "sha256": "51fd171179a75876039931748984885e4567f9cac397a4bc6a637e408cd3c10a",
   "minimumSystemVersion": "14.0",
   "published": "2026-10-13",
   "notes": {
     "zh": [
-      "降低后台索引和内容识别的持续 CPU 占用：图片和文档分段处理，打字或重建文件目录时自动暂停内容识别。",
-      "修复文件变化时已识别的内容搜索结果暂时消失的问题，减少重复遍历和识别中断。",
-      "完整文件扫描减少并行线程，为日常搜索和其他应用留出更多资源。首次批量识别会更慢，已完成的内容仍可直接搜索。"
+      "修复文件频繁变化时后台维护任务可能积压的问题：合并尚未完成的维护任务，让图片和文档识别能继续向前处理。",
+      "慢速目录核对结束后再计算下一次维护的间隔，避免连续重复遍历。保留 1.6.1 的 CPU 调度优化。"
     ],
     "en": [
-      "Reduced sustained CPU use during background indexing and content recognition. Images and documents are processed with breaks, and content recognition pauses while you type or rebuild the file index.",
-      "Fixed recognized content results temporarily disappearing after file changes, with fewer repeated scans and interrupted recognition tasks.",
-      "Full file scans use fewer parallel threads to leave more resources for searches and other apps. Initial bulk recognition takes longer; content already recognized remains searchable."
+      "Fixed background maintenance tasks accumulating during frequent file changes. Outstanding maintenance tasks are coalesced so image and document recognition can continue making progress.",
+      "The next maintenance interval now starts when a slow catalog check finishes, avoiding back-to-back repeated scans. Includes the CPU scheduling improvements from 1.6.1."
     ]
   }
 }

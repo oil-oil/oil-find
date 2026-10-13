@@ -9,6 +9,13 @@ export const changelogTitle = { zh: '更新日志', en: 'Changelog' };
 // The single source for the website and the packaged update manifest.
 export const releases: Release[] = [
   {
+    version: '1.6.2', date: '2026-10-13',
+    notes: {
+      zh: ['修复文件频繁变化时后台维护任务可能积压的问题：合并尚未完成的维护任务，让图片和文档识别能继续向前处理。', '慢速目录核对结束后再计算下一次维护的间隔，避免连续重复遍历。保留 1.6.1 的 CPU 调度优化。'],
+      en: ['Fixed background maintenance tasks accumulating during frequent file changes. Outstanding maintenance tasks are coalesced so image and document recognition can continue making progress.', 'The next maintenance interval now starts when a slow catalog check finishes, avoiding back-to-back repeated scans. Includes the CPU scheduling improvements from 1.6.1.'],
+    },
+  },
+  {
     version: '1.6.1', date: '2026-10-13',
     notes: {
       zh: [
