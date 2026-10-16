@@ -2,7 +2,7 @@
   "metadata": {
     "/en": {
       "title": "Oil Find: Everything for Mac. Free, open-source file search",
-      "description": "Press ⇧⌘F and results appear as you type, in under 10 ms. Wildcards, regex, pinyin, live updates and external drives. Free and open source."
+      "description": "Search Mac files and local Claude Code, Codex, and WorkBuddy conversations with ⇧⌘F. Free, open source, local indexes."
     },
     "/en/pro": {
       "title": "Oil Find Pro: search inside images and documents on Mac",
@@ -14,7 +14,7 @@
     },
     "/everything-for-mac": {
       "title": "Mac 上有 Everything 吗？用 Oil Find 一样按文件名秒搜",
-      "description": "Everything 只有 Windows 版。Oil Find 是为 Mac 写的同类工具：给文件名建内存索引，输入即出结果，支持拼音、通配符和正则，免费开源。"
+      "description": "Everything 只有 Windows 版。Oil Find 为 Mac 提供免费开源的文件名搜索，也能搜索本地 Claude Code、Codex 和 WorkBuddy 对话。"
     },
     "/en/syntax": {
       "title": "Oil Find search syntax: wildcards, regex and filters",
@@ -22,7 +22,7 @@
     },
     "/en/everything-for-mac": {
       "title": "Everything for Mac: Oil Find, instant file search by name",
-      "description": "Everything is Windows-only. Oil Find works the same way on a Mac: an in-memory index of every file name, results as you type, free and open source."
+      "description": "Everything is Windows-only. Oil Find is a free, open-source Mac app for file names and local Claude Code, Codex, and WorkBuddy conversations."
     }
   },
   "syntax": {
@@ -60,7 +60,7 @@
         },
         {
           "q": "免费吗？",
-          "a": "免费，开源。搜图片和文档里的文字等功能在付费的 Pro 里。"
+          "a": "免费开源，包含文件名搜索以及本地 Claude Code、Codex 和 WorkBuddy 对话搜索。图片与文档全文检索等功能由付费 Pro 版提供。"
         },
         {
           "q": "支持 Intel Mac 吗？",
@@ -71,7 +71,7 @@
         {
           "title": "一样的地方",
           "items": [
-            "只按文件名找，不读文件内容，所以快：85 万个文件，每敲一个键不到 10 毫秒。",
+            "文件搜索只按名称查找，不读取文件正文：85 万个文件，单次按键响应不到 10 毫秒。",
             "文件新建、改名、删除，索引实时更新。",
             "支持通配符、正则，按类型、大小、修改时间筛选。",
             "外置磁盘插上就能搜。"
@@ -83,6 +83,7 @@
             "原生应用：面板在屏幕正中，全键盘操作，按空格用 Quick Look 预览，结果可以拖到其他应用。",
             "拼音首字母和全拼：输入 wd 就能找到「文档」。",
             "默认不索引开发依赖、应用包内部和系统目录，结果更干净；需要时在设置里打开。",
+            "同一个搜索面板还能检索保存在本机的 Claude Code、Codex 和 WorkBuddy 对话标题与正文，免费版即可使用。",
             "开源，MIT 许可证。"
           ]
         }
@@ -106,7 +107,7 @@
         },
         {
           "q": "Is it free?",
-          "a": "Yes, and open source. Searching the text inside images and documents is part of the paid Pro add-on."
+          "a": "Free and open source, including file name search and local conversations from Claude Code, Codex, and WorkBuddy. Search inside images and documents is part of the paid Pro version."
         },
         {
           "q": "Does it support Intel Macs?",
@@ -117,7 +118,7 @@
         {
           "title": "What’s the same",
           "items": [
-            "It searches file names only, never file contents, which is why it’s fast: 850,000 files in under 10 ms per keystroke.",
+            "File search looks up names without reading contents: 850,000 files in under 10 ms per keystroke.",
             "The index follows along as files are created, renamed and deleted.",
             "Wildcards, regular expressions, and filters by kind, size and date.",
             "External drives are searchable as soon as you plug them in."
@@ -129,6 +130,7 @@
             "A native app: a panel in the middle of the screen, full keyboard control, Quick Look with Space, and drag and drop into other apps.",
             "Pinyin initials and full pinyin for Chinese file names.",
             "Dependency folders, app internals and system folders are left out by default for cleaner results. Turn them on in Settings when you need them.",
+            "The same search panel also searches titles and body text from local Claude Code, Codex, and WorkBuddy conversations, included in the free version.",
             "Open source under the MIT license."
           ]
         }

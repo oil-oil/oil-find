@@ -7,7 +7,7 @@ let includesExtension = Context.environment["OILFIND_FREE"] != "1"
 var targets: [Target] = [
     .target(name: "COilFind", publicHeadersPath: "include"),
     .target(name: "OilFindCore", dependencies: ["COilFind"]),
-    .target(name: "OilFindApp", dependencies: ["OilFindCore"]),
+    .target(name: "OilFindApp", dependencies: ["OilFindCore"], resources: [.copy("Resources")]),
     .executableTarget(name: "OilFind", dependencies: includesExtension ? ["OilFindApp", "OilFindPro"] : ["OilFindApp"],
                       swiftSettings: includesExtension ? [] : [.define("OILFIND_FREE_BUILD")]),
     .executableTarget(name: "oilfind-cli", dependencies: ["OilFindCore"]),

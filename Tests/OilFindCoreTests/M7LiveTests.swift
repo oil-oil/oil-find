@@ -72,8 +72,11 @@ final class M7LiveTests: XCTestCase {
         let manager = IndexManager(config: f.config, dbURL: f.db)
         let countLock = NSLock()
         var starts = 0, applies = 0
-        manager.onRescanStart = { [weak manager] in
-            countLock.lock(); starts += 1; let current = starts; countLock.unlock()
+        manager.onRescanStart = {
+            countLock.lock(); starts += 1; countLock.unlock()
+        }
+        manager.onScannerCreated = { [weak manager] _ in
+            countLock.lock(); let current = starts; countLock.unlock()
             if current == 1 { manager?.injectEvents(f.events([""], flags: UInt32(kFSEventStreamEventFlagMustScanSubDirs)), mustRescanAll: true) }
         }
         manager.start(); defer { manager.stop() }
@@ -90,6 +93,193 @@ final class M7LiveTests: XCTestCase {
         XCTAssertEqual(applies, 0)
         XCTAssertEqual(contents(try XCTUnwrap(manager.store)), contents(try f.scan()))
         print("T73 loss during rescan: recovery scans=2 apply=0")
+    }
+    func testRetiredStreamLossCannotRestartScanAndBufferedMutationSurvivesReplacement() throws {
+        let f = try Fixture(); try f.file("before.txt")
+        let manager = IndexManager(config: f.config, dbURL: f.db, settingsDefaults: nil)
+        manager.start(); defer { manager.stop() }
+        XCTAssertTrue(eventually { manager.state == .ready })
+        let original = try XCTUnwrap(manager.store), oldEpoch = manager.watcherEpochForTesting
+        let scannedRoot = DispatchSemaphore(value: 0), resume = DispatchSemaphore(value: 0)
+        defer { resume.signal() }
+        let countLock = NSLock(); var starts = 0
+        manager.onRescanStart = { countLock.lock(); starts += 1; countLock.unlock() }
+        manager.onScannerCreated = { scanner in
+            scanner.installDirectoryCompletionHook { relative in
+                if relative.isEmpty { scannedRoot.signal(); _ = resume.wait(timeout: .now() + 5) }
+            }
+        }
+        manager.rescan()
+        XCTAssertTrue(eventually { scannedRoot.wait(timeout: .now()) == .success })
+        let freshEpoch = manager.watcherEpochForTesting
+        XCTAssertGreaterThan(freshEpoch, oldEpoch)
+        try f.file("during-scan.txt")
+        manager.injectEvents(f.events(["during-scan.txt"], id: FSWatcher.currentEventId() + 1), mustRescanAll: false, watcherEpoch: freshEpoch)
+        for _ in 0..<32 {
+            manager.injectEvents(f.events([""], flags: UInt32(kFSEventStreamEventFlagMustScanSubDirs | kFSEventStreamEventFlagUserDropped)), mustRescanAll: true, watcherEpoch: oldEpoch)
+        }
+        _ = manager.watcherEpochForTesting
+        resume.signal()
+        XCTAssertTrue(eventually { manager.store !== original && !manager.isRescanning })
+        XCTAssertTrue(eventually { manager.store.map { Searcher.search(Query.parse("regex:^during-scan[.]txt$"), in: $0)?.total == 1 } ?? false })
+        RunLoop.current.run(until: Date().addingTimeInterval(0.15))
+        countLock.lock(); let count = starts; countLock.unlock()
+        XCTAssertEqual(count, 1, "Callbacks from the retired replay stream must not start another full scan")
+        XCTAssertEqual(contents(try XCTUnwrap(manager.store)), contents(try f.scan()))
+    }
+    func testFreshStreamLossAfterDirectoryReadRecoversMissingMutation() throws {
+        let f = try Fixture(); try f.file("before.txt")
+        let manager = IndexManager(config: f.config, dbURL: f.db, settingsDefaults: nil)
+        manager.start(); defer { manager.stop() }
+        XCTAssertTrue(eventually { manager.state == .ready })
+        let scannedRoot = DispatchSemaphore(value: 0), resume = DispatchSemaphore(value: 0)
+        defer { resume.signal() }
+        let countLock = NSLock(); var starts = 0
+        manager.onRescanStart = { countLock.lock(); starts += 1; countLock.unlock() }
+        manager.onScannerCreated = { scanner in
+            countLock.lock(); let current = starts; countLock.unlock()
+            if current == 1 {
+                scanner.installDirectoryCompletionHook { relative in
+                    if relative.isEmpty { scannedRoot.signal(); _ = resume.wait(timeout: .now() + 5) }
+                }
+            }
+        }
+        manager.rescan()
+        XCTAssertTrue(eventually { scannedRoot.wait(timeout: .now()) == .success })
+        try f.file("lost-during-scan.txt")
+        manager.injectEvents(f.events([""], flags: UInt32(kFSEventStreamEventFlagMustScanSubDirs | kFSEventStreamEventFlagUserDropped), id: FSWatcher.currentEventId() + 1), mustRescanAll: true, watcherEpoch: manager.watcherEpochForTesting)
+        _ = manager.watcherEpochForTesting
+        resume.signal()
+        XCTAssertTrue(eventually {
+            countLock.lock(); let count = starts; countLock.unlock()
+            return count == 2 && !manager.isRescanning
+        })
+        XCTAssertEqual(contents(try XCTUnwrap(manager.store)), contents(try f.scan()))
+        XCTAssertEqual(Searcher.search(Query.parse("regex:^lost-during-scan[.]txt$"), in: try XCTUnwrap(manager.store))?.total, 1)
+    }
+    func testBoundedScanBufferQueuesRecoveryInsteadOfDroppingMutationSilently() throws {
+        let f = try Fixture(); try f.file("before.txt")
+        let manager = IndexManager(config: f.config, dbURL: f.db, settingsDefaults: nil)
+        manager.bufferedEventByteLimit = 1
+        manager.start(); defer { manager.stop() }
+        XCTAssertTrue(eventually { manager.state == .ready })
+        let scannedRoot = DispatchSemaphore(value: 0), resume = DispatchSemaphore(value: 0)
+        defer { resume.signal() }
+        let countLock = NSLock(); var starts = 0
+        manager.onRescanStart = { countLock.lock(); starts += 1; countLock.unlock() }
+        manager.onScannerCreated = { scanner in
+            countLock.lock(); let current = starts; countLock.unlock()
+            if current == 1 {
+                scanner.installDirectoryCompletionHook { relative in
+                    if relative.isEmpty { scannedRoot.signal(); _ = resume.wait(timeout: .now() + 5) }
+                }
+            }
+        }
+        manager.rescan()
+        XCTAssertTrue(eventually { scannedRoot.wait(timeout: .now()) == .success })
+        try f.file("overflow.txt")
+        manager.injectEvents(f.events(["overflow.txt"], id: FSWatcher.currentEventId() + 1), mustRescanAll: false)
+        _ = manager.watcherEpochForTesting
+        resume.signal()
+        XCTAssertTrue(eventually {
+            countLock.lock(); let count = starts; countLock.unlock()
+            return count == 2 && !manager.isRescanning
+        })
+        XCTAssertEqual(Searcher.search(Query.parse("regex:^overflow[.]txt$"), in: try XCTUnwrap(manager.store))?.total, 1)
+    }
+    func testLiveLossSchedulingGapCannotAdvanceSavedCursorBeforeScannerStarts() throws {
+        let f = try Fixture(); try f.file("before.txt")
+        let manager = IndexManager(config: f.config, dbURL: f.db, settingsDefaults: nil)
+        manager.start(); defer { manager.stop() }
+        XCTAssertTrue(eventually { manager.state == .ready })
+        _ = manager.watcherEpochForTesting
+        let old = try XCTUnwrap(manager.store), safeCursor = old.read { old.lastEventId }
+        let beforeScan = DispatchSemaphore(value: 0), resume = DispatchSemaphore(value: 0)
+        defer { resume.signal() }
+        manager.onRescanStart = { [weak manager] in
+            manager?.injectEvents(f.events(["before.txt"], id: safeCursor + 10_000), mustRescanAll: false)
+        }
+        manager.onScannerCreated = { _ in
+            XCTAssertEqual(old.read { old.lastEventId }, safeCursor)
+            beforeScan.signal(); _ = resume.wait(timeout: .now() + 5)
+        }
+        manager.injectEvents(f.events([""], flags: UInt32(kFSEventStreamEventFlagMustScanSubDirs | kFSEventStreamEventFlagUserDropped), id: safeCursor + 1), mustRescanAll: true)
+        XCTAssertTrue(eventually { beforeScan.wait(timeout: .now()) == .success })
+        XCTAssertEqual(old.read { old.lastEventId }, safeCursor)
+        manager.saveNow(); manager.stop()
+        let saved = try XCTUnwrap(IndexStore.load(from: f.db.path))
+        XCTAssertEqual(saved.lastEventId, safeCursor)
+        resume.signal()
+    }
+    func testPendingRecoverySchedulingGapCannotAdvancePersistedReplacementCursor() throws {
+        let f = try Fixture(); try f.file("before.txt")
+        let manager = IndexManager(config: f.config, dbURL: f.db, settingsDefaults: nil)
+        manager.start(); defer { manager.stop() }
+        XCTAssertTrue(eventually { manager.state == .ready })
+        let firstRead = DispatchSemaphore(value: 0), resumeFirst = DispatchSemaphore(value: 0)
+        let beforeRecovery = DispatchSemaphore(value: 0), resumeRecovery = DispatchSemaphore(value: 0)
+        defer { resumeFirst.signal(); resumeRecovery.signal() }
+        let countLock = NSLock(); var starts = 0, safeCursor: UInt64 = 0
+        manager.onRescanStart = { [weak manager] in
+            countLock.lock(); starts += 1; let current = starts; countLock.unlock()
+            if current == 2, let store = manager?.store {
+                let cursor = store.read { store.lastEventId }
+                countLock.lock(); safeCursor = cursor; countLock.unlock()
+                manager?.injectEvents(f.events(["before.txt"], id: cursor + 10_000), mustRescanAll: false)
+            }
+        }
+        manager.onScannerCreated = { [weak manager] scanner in
+            countLock.lock(); let current = starts, cursor = safeCursor; countLock.unlock()
+            if current == 1 {
+                scanner.installDirectoryCompletionHook { relative in
+                    if relative.isEmpty { firstRead.signal(); _ = resumeFirst.wait(timeout: .now() + 5) }
+                }
+            } else if current == 2 {
+                if let store = manager?.store { XCTAssertEqual(store.read { store.lastEventId }, cursor) }
+                beforeRecovery.signal(); _ = resumeRecovery.wait(timeout: .now() + 5)
+            }
+        }
+        manager.rescan()
+        XCTAssertTrue(eventually { firstRead.wait(timeout: .now()) == .success })
+        manager.injectEvents(f.events([""], flags: UInt32(kFSEventStreamEventFlagMustScanSubDirs | kFSEventStreamEventFlagUserDropped), id: FSWatcher.currentEventId() + 1), mustRescanAll: true)
+        _ = manager.watcherEpochForTesting; resumeFirst.signal()
+        XCTAssertTrue(eventually { beforeRecovery.wait(timeout: .now()) == .success })
+        countLock.lock(); let expected = safeCursor; countLock.unlock()
+        manager.saveNow(); manager.stop()
+        XCTAssertEqual(try XCTUnwrap(IndexStore.load(from: f.db.path)).lastEventId, expected)
+        resumeRecovery.signal()
+    }
+    func testBufferedReconciliationIsUnpublishedUntilItsCursorIsSafeToSave() throws {
+        let f = try Fixture(); try f.file("before.txt")
+        let manager = IndexManager(config: f.config, dbURL: f.db, settingsDefaults: nil)
+        manager.start(); defer { manager.stop() }
+        XCTAssertTrue(eventually { manager.state == .ready })
+        _ = manager.watcherEpochForTesting
+        let old = try XCTUnwrap(manager.store), safeCursor = old.read { old.lastEventId }
+        let scannedRoot = DispatchSemaphore(value: 0), resume = DispatchSemaphore(value: 0), checked = DispatchSemaphore(value: 0)
+        defer { resume.signal() }
+        manager.onScannerCreated = { scanner in
+            scanner.installDirectoryCompletionHook { relative in
+                if relative.isEmpty { scannedRoot.signal(); _ = resume.wait(timeout: .now() + 5) }
+            }
+        }
+        manager.onUpdaterCreated = { [weak manager] updater in
+            updater.onPhase3 = { [weak updater] in
+                updater?.onPhase3 = nil
+                XCTAssertTrue(manager?.store === old)
+                manager?.saveNow()
+                XCTAssertEqual(IndexStore.load(from: f.db.path)?.lastEventId, safeCursor)
+                checked.signal()
+            }
+        }
+        manager.rescan()
+        XCTAssertTrue(eventually { scannedRoot.wait(timeout: .now()) == .success })
+        try f.file("buffered.txt")
+        manager.injectEvents(f.events(["buffered.txt"], id: safeCursor + 10_000), mustRescanAll: false)
+        _ = manager.watcherEpochForTesting; resume.signal()
+        XCTAssertTrue(eventually { checked.wait(timeout: .now()) == .success })
+        XCTAssertTrue(eventually { manager.store !== old && !manager.isRescanning })
+        XCTAssertEqual(Searcher.search(Query.parse("regex:^buffered[.]txt$"), in: try XCTUnwrap(manager.store))?.total, 1)
     }
     func testT74Phase2InvalidatesCacheAndNarrowing() throws {
         let f = try Fixture(); try f.file("leaf-old.txt")

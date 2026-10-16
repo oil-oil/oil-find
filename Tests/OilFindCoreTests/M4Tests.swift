@@ -77,9 +77,17 @@ final class M4Tests: XCTestCase {
             try FileManager.default.createDirectory(at: root.appendingPathComponent(directory), withIntermediateDirectories: true)
             try Data("sample".utf8).write(to: root.appendingPathComponent(directory + "/leaf.txt"))
         }
-        for i in 0..<3_000 { try Data().write(to: root.appendingPathComponent("bulk/file-\(i).txt")) }
         let original = IndexConfig(rootPath: root.path, indexSystemDirs: true)
         let manager = IndexManager(config: original, dbURL: db)
+        let scanLock = NSLock(), scanEntered = DispatchSemaphore(value: 0), resumeScan = DispatchSemaphore(value: 0)
+        var pauseNextScan = false
+        manager.onScannerCreated = { _ in
+            scanLock.lock(); let pause = pauseNextScan; pauseNextScan = false; scanLock.unlock()
+            if pause { scanEntered.signal(); _ = resumeScan.wait(timeout: .now() + 8) }
+        }
+        // Control the in-flight boundary directly instead of relying on thousands of files
+        // to keep a rebuild observable under varying filesystem and machine load.
+        defer { resumeScan.signal() }
         manager.start(); defer { manager.stop() }
         XCTAssertTrue(eventually { manager.state == .ready && !manager.isRescanning })
         let first = try XCTUnwrap(manager.store)
@@ -88,21 +96,28 @@ final class M4Tests: XCTestCase {
         XCTAssertTrue(manager.store === first); XCTAssertFalse(manager.isRescanning)
 
         var configA = original; configA.userExcludedPaths = [root.path + "/a"]
+        scanLock.lock(); pauseNextScan = true; scanLock.unlock()
         manager.updateConfig(configA)
-        XCTAssertTrue(eventually { manager.isRescanning })
+        XCTAssertTrue(eventually { scanEntered.wait(timeout: .now()) == .success })
+        XCTAssertTrue(manager.isRescanning)
         XCTAssertTrue(manager.store === first)
         XCTAssertNotNil(Searcher.search(Query.parse("leaf"), in: first))
+        resumeScan.signal()
         XCTAssertTrue(eventually { !manager.isRescanning && manager.store?.configFingerprint == configA.fingerprint })
         let second = try XCTUnwrap(manager.store)
         XCTAssertNil(second.read { second.resolve(path: root.path + "/a") })
         manager.saveNow()
         XCTAssertEqual(IndexStore.load(from: db.path)?.configFingerprint, configA.fingerprint)
 
+        scanLock.lock(); pauseNextScan = true; scanLock.unlock()
         manager.rescan()
-        XCTAssertTrue(eventually { manager.isRescanning })
+        XCTAssertTrue(eventually { scanEntered.wait(timeout: .now()) == .success })
+        XCTAssertTrue(manager.isRescanning)
         var configB = original; configB.userExcludedPaths = [root.path + "/b"]
         var configC = original; configC.userExcludedPaths = [root.path + "/c"]
         manager.updateConfig(configB); manager.updateConfig(configC)
+        _ = manager.watcherEpochForTesting
+        resumeScan.signal()
         XCTAssertTrue(eventually { !manager.isRescanning && manager.store?.configFingerprint == configC.fingerprint })
         let final = try XCTUnwrap(manager.store)
         final.read {

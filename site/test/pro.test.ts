@@ -98,7 +98,7 @@ describe.each(['zh', 'en'] as const)('Free vs Pro clarity (%s)', lang => {
     expect(text(section.match(/<caption[^>]*>([\s\S]*?)<\/caption>/)![1])).toBe(proCopy[lang].compare.title);
     expect(section.match(/scope="col"/g)).toHaveLength(3);
     const rows = [...section.matchAll(/<tr>([\s\S]*?)<\/tr>/g)].slice(1);
-    expect(rows).toHaveLength(9);
+    expect(rows).toHaveLength(proCopy[lang].compare.rows.length);
     rows.forEach((row, index) => {
       expect(row[1]).toContain('scope="row"');
       const cells = [...row[1].matchAll(/<(?:th|td)[^>]*>([\s\S]*?)<\/(?:th|td)>/g)].map(cell => text(cell[1]));

@@ -28,7 +28,10 @@ final class FooterBar: FlippedView {
     private var toastContent: (ToastKind, String)?
     private let status = Theme.label(11.5, .regular, .tertiaryLabelColor)
     private let hints = [KeyHint("↩", L10n.text("hint.open")), KeyHint("⌘↩", L10n.text("hint.reveal")), KeyHint("⌘Y", L10n.text("hint.preview")), KeyHint("⌘C", L10n.text("hint.copy"))]
+    private let settings = SettingsButton()
+    var onSettings: (() -> Void)?
     private let syntax = KeyHint("⌘/", L10n.text("hint.syntax"))
+    var fileActions = true { didSet { hints[3].localize(L10n.text(fileActions ? "hint.copy" : "hint.copyResult")); needsLayout = true } }
     var spacePreview = false { didSet { updatePreviewKey() } }
     var previewKey: String { spacePreview ? L10n.text("hint.space") : "⌘Y" }
     private func updatePreviewKey() { hints[2].key = previewKey; needsLayout = true }
@@ -39,7 +42,8 @@ final class FooterBar: FlippedView {
         super.init(frame: frame)
         status.wantsLayer = true; toast.wantsLayer = true; toast.alphaValue = 0
         toast.lineBreakMode = .byTruncatingMiddle
-        addSubview(status); addSubview(toast); hints.forEach(addSubview); addSubview(syntax)
+        addSubview(status); addSubview(toast); hints.forEach(addSubview); addSubview(syntax); addSubview(settings)
+        settings.onPress = { [weak self] in self?.onSettings?() }
         actionable = false
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -63,17 +67,19 @@ final class FooterBar: FlippedView {
     }
     func localize() {
         updatePreviewKey()
-        for (hint, key) in zip(hints, ["open", "reveal", "preview", "copy"]) { hint.localize(L10n.text("hint." + key)) }
-        syntax.localize(L10n.text("hint.syntax"))
+        for (hint, key) in zip(hints, ["open", "reveal", "preview", "copy"]) { hint.localize(L10n.text("hint." + (key == "copy" && !fileActions ? "copyResult" : key))) }
+        syntax.localize(L10n.text("hint.syntax")); settings.localize()
         if let (kind, value) = toastContent { toast.stringValue = Presentation.toastText(kind, value: value, chinese: L10n.chinese) }
         needsLayout = true
     }
     deinit { toastTimer?.invalidate() }
     override func layout() {
         super.layout()
-        let visibleHints = actionable && !warning ? hints + [syntax] : [syntax]
-        hints.forEach { $0.isHidden = !actionable || warning }
-        var x = bounds.width - 18 - visibleHints.reduce(0) { $0 + $1.desiredWidth } - CGFloat(visibleHints.count - 1) * 10
+        let activeHints = fileActions ? hints : [hints[0], hints[3]]
+        let visibleHints = actionable && !warning ? activeHints + [syntax] : [syntax]
+        hints.forEach { $0.isHidden = !actionable || warning || !activeHints.contains($0) }
+        settings.frame = NSRect(x: bounds.width - 18 - settings.desiredWidth, y: 4, width: settings.desiredWidth, height: 26)
+        var x = settings.frame.minX - 14 - visibleHints.reduce(0) { $0 + $1.desiredWidth } - CGFloat(visibleHints.count - 1) * 10
         status.frame = NSRect(x: 22, y: 9, width: max(0, x - 38), height: 16)
         toast.frame = status.frame
         for hint in visibleHints { hint.frame = NSRect(x: x, y: 8, width: hint.desiredWidth, height: 18); x += hint.desiredWidth + 10 }

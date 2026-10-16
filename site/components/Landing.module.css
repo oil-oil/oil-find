@@ -3,6 +3,7 @@
 .appIcon { display: block; margin: 0 auto 16px; animation: arrive .42s var(--spring-panel) both; }
 .headline { margin: 0; font: 600 46px/1.16 var(--display); letter-spacing: -.035em; }
 .headline > span { display: block; }
+.summary { max-width: 520px; margin: 16px auto 0; color: var(--ink2); font-size: 15px; line-height: 1.7; text-wrap: pretty; }
 .download {
   display: inline-flex; align-items: center; justify-content: center; gap: 12px;
   min-width: 236px; min-height: 58px; padding: 0 32px; margin-top: 26px; border-radius: 14px;

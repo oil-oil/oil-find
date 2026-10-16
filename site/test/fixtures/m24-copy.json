@@ -2,11 +2,11 @@
   "metadata": {
     "/": {
       "title": "Oil Find：苹果版的 Everything，免费开源的 Mac 文件搜索工具",
-      "description": "按 ⇧⌘F，屏幕正中弹出搜索框，每敲一个键不到 10 毫秒出结果。支持拼音首字母、通配符、正则、实时更新和外置硬盘，不依赖 Spotlight。免费开源，Pro 还能搜图片和文档里的文字。"
+      "description": "按 ⇧⌘F 搜索 Mac 文件名和本机 Claude Code、Codex、WorkBuddy 对话。支持拼音、通配符和正则。免费开源，索引只留在本机。"
     },
     "/en": {
       "title": "Oil Find: Everything for Mac. Free, open-source file search",
-      "description": "Press ⇧⌘F and results appear as you type, in under 10 ms. Wildcards, regex, pinyin, live updates and external drives. Free and open source."
+      "description": "Search Mac files and local Claude Code, Codex, and WorkBuddy conversations with ⇧⌘F. Free, open source, local indexes."
     },
     "/pro": {
       "title": "Oil Find Pro：搜图片和文档里的文字，拔掉的硬盘也能搜",
@@ -29,7 +29,7 @@
     "zh": [
       {
         "q": "和 Spotlight 有什么不同",
-        "a": "Spotlight 同时搜文件内容、应用和网页，结果多，排序难以预料。Oil Find 只按文件名找，自己维护一份内存索引，每敲一个键都在 10 毫秒内出结果，还支持拼音首字母、通配符和正则。"
+        "a": "Spotlight 同时搜索文件内容、应用和网页。Oil Find 的文件搜索针对文件名建立内存索引，支持拼音首字母、通配符和正则表达式；同一个搜索面板还能查找本地 Claude Code、Codex 和 WorkBuddy 对话。"
       },
       {
         "q": "苹果版的 Everything",
@@ -39,7 +39,7 @@
     "en": [
       {
         "q": "How it differs from Spotlight",
-        "a": "Spotlight searches file contents, apps and the web at once, so results are many and their order is hard to predict. Oil Find finds files by name only, keeps its own in-memory index and answers every keystroke in under 10 ms, with pinyin initials, wildcards and regex."
+        "a": "Spotlight searches file contents, apps, and the web. Oil Find indexes file names in memory, with pinyin, wildcards, and regex. The same panel also searches local conversations from Claude Code, Codex, and WorkBuddy."
       },
       {
         "q": "Everything for Mac",
@@ -48,8 +48,8 @@
     ]
   },
   "privacy": {
-    "zh": "免费版只索引文件名，不读文件内容；Pro 识别图片、读取文档也全部在这台 Mac 上完成。索引只存在本机。每天检查一次更新，只读取版本信息。",
-    "en": "The free version indexes file names only, never file contents, and Pro reads images and documents entirely on your Mac. The index stays on this Mac. Oil Find checks for updates once a day and only reads version info."
+    "zh": "文件搜索只索引文件名，不读取文件正文。启用 AI 话题搜索后，Oil Find 会读取所选来源保存在本机的对话标题与正文，并在本机建立索引，不会上传。Pro 版的图片识别和文档读取也都在本机完成。应用每天自动检查一次更新，只读取版本信息。",
+    "en": "File search indexes names without reading file contents. When AI Topics is enabled, Oil Find reads titles and body text saved locally by your chosen sources and builds the index on your Mac. Nothing is uploaded. Pro image and document processing also stays on your Mac. Daily update checks only read version info."
   },
   "proShare": {
     "zh": [

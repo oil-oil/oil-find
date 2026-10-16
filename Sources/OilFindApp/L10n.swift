@@ -22,6 +22,10 @@ enum L10n {
         guard let pair = strings[key] else { preconditionFailure("Unknown localization key: \(key)") }
         return String(format: chinese ? pair.0 : pair.1, arguments: arguments)
     }
+    static func text(_ key: String, chinese: Bool, _ arguments: String...) -> String {
+        guard let pair = strings[key] else { preconditionFailure("Unknown localization key: \(key)") }
+        return String(format: chinese ? pair.0 : pair.1, arguments: arguments)
+    }
     static func diagnostic(_ diagnostic: QueryDiagnostic) -> String {
         let value = diagnostic.kind == .kind ? Query.kindNames.joined(separator: ", ") : diagnostic.value
         return text("diag." + diagnostic.kind.rawValue, value)
@@ -39,6 +43,22 @@ enum L10n {
         }
     }
     private static let strings: [String: (String, String)] = [
+        "topicsPlaceholder": ("搜索 AI 话题与对话内容", "Search AI topics and conversations"),
+        "topicsTitle": ("AI 话题", "AI Topics"),
+        "topicsUntitled": ("未命名话题", "Untitled topic"),
+        "topicsBuildingShort": ("正在同步话题", "Syncing topics"),
+        "topicsSyncFailed": ("话题同步未完成", "Topic sync incomplete."),
+        "topicsOpen": ("打开会话", "Open Conversation"),
+        "topicsCopyResume": ("复制继续会话命令", "Copy Resume Command"),
+        "topicsCopyTitle": ("复制标题", "Copy Title"),
+        "topicsEnabled": ("搜索本地 AI 话题", "Search local AI topics"),
+        "topicsClaudeProvider": ("Claude Code（含桌面 Code）", "Claude Code (including desktop Code)"),
+        "topicsCodexProvider": ("Codex", "Codex"),
+        "topicsWorkBuddyProvider": ("WorkBuddy", "WorkBuddy"),
+        "topicsPrivacy": ("只读取已启用来源的本地标题与正文，增量更新，不会上传。", "Reads local titles and conversations from enabled sources. Updates incrementally, with no uploads."),
+        "topicsDone": ("已索引 %@ 个话题", "%@ topics indexed"),
+        "topicsSize": ("索引占用 %@", "Index uses %@"),
+        "action.retry": ("重试", "Try Again"),
         "action.cancel": ("取消", "Cancel"),
         "drivesTitle": ("外置磁盘", "External Drives"),
         "drivesEnabled": ("索引外置磁盘", "Index external drives"),
@@ -106,6 +126,9 @@ enum L10n {
         "diag.date": ("dm: 的写法是 dm:today、dm:week 或 dm:2026-10-01", "Write dm: as dm:today, dm:week or dm:2026-10-01"),
         "diag.title": ("查询写法有误", "Check Your Query"),
         "hint.syntax": ("语法", "Syntax"),
+        "hint.copyResult": ("复制", "Copy"),
+        "search.failed": ("搜索暂时未完成，请重试。", "Search could not finish. Please try again."),
+        "search.actionFailed": ("无法操作这个结果，请重新搜索后重试。", "This result is no longer available. Search again and try once more."),
         "placeholder": ("搜索文件、文件夹和应用", "Search files, folders and apps"),
         "filter.all": ("全部", "All"), "filter.folder": ("文件夹", "Folders"),
         "filter.app": ("应用", "Apps"), "filter.document": ("文档", "Documents"),

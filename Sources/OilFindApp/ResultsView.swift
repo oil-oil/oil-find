@@ -66,6 +66,7 @@ final class ResultCell: NSTableCellView {
     }
     func configure(_ item: ResultItem, query: Query, icons: IconProvider) {
         configuration += 1
+        sizeLabel.lineBreakMode = .byTruncatingTail
         let token = configuration
         displayingThumbnail = false
         updateThumbnailStyle()
@@ -100,6 +101,23 @@ final class ResultCell: NSTableCellView {
         }
         needsLayout = true
     }
+    func configure(_ item: AdditionalSearchItem, query: Query) {
+        configuration += 1; displayingThumbnail = false; updateThumbnailStyle()
+        func highlighted(_ text: String, font: NSFont, color: NSColor) -> NSAttributedString {
+            let value = NSMutableAttributedString(string: text, attributes: [.font: font, .foregroundColor: color])
+            for range in Presentation.highlightRanges(name: text, query: query) {
+                value.addAttribute(.foregroundColor, value: NSColor.controlAccentColor, range: range)
+            }
+            return value
+        }
+        nameLabel.attributedStringValue = highlighted(item.title, font: nameLabel.font!, color: .labelColor)
+        detailLabel.isHidden = true; detailLabel.stringValue = ""
+        pathLabel.attributedStringValue = highlighted(item.detail, font: pathLabel.font!, color: .secondaryLabelColor)
+        dateLabel.stringValue = Presentation.dateText(item.modified, now: Date(), calendar: .current, chinese: L10n.chinese)
+        sizeLabel.stringValue = item.location; sizeLabel.lineBreakMode = .byTruncatingMiddle
+        icon.image = item.icon; toolTip = item.location + "\n" + item.detail; needsLayout = true
+    }
+
 }
 
 private final class ResultTable: NSTableView {
@@ -178,6 +196,7 @@ final class ResultsView: FlippedView, NSTableViewDataSource, NSTableViewDelegate
     private static let scrollQuietPeriod = 0.12
     private var pendingRefresh: SearchPresentation?
     private var pendingLocalization = false, pendingClear = false
+    private var additionalSelectionID: String?
     private var selectionIdentity: (sourceID: String, store: IndexStore, id: UInt32, path: String)?
     private var scrolling: Bool { liveScrolling || wheelScrolling || momentumScrolling }
     let icons = IconProvider()
@@ -250,7 +269,7 @@ final class ResultsView: FlippedView, NSTableViewDataSource, NSTableViewDelegate
         let origin = scroll.contentView.bounds.origin
         if preservingViewport { table.minimumDocumentHeight = max(table.minimumDocumentHeight, origin.y + scroll.contentView.bounds.height) }
         else { table.minimumDocumentHeight = 0 }
-        cancelPress(); result = nil; selectionIdentity = nil
+        cancelPress(); result = nil; selectionIdentity = nil; additionalSelectionID = nil
         table.reloadData(); table.deselectAll(nil); updateSelection(animated: false); hideHover(immediately: true)
         if preservingViewport { scroll.contentView.scroll(to: origin); scroll.reflectScrolledClipView(scroll.contentView) }
     }
@@ -264,11 +283,17 @@ final class ResultsView: FlippedView, NSTableViewDataSource, NSTableViewDelegate
         guard range.location != NSNotFound, range.length > 0 else { return }
         table.reloadData(forRowIndexes: IndexSet(integersIn: range.location..<NSMaxRange(range)), columnIndexes: IndexSet(integer: 0))
     }
-    func refresh(_ result: SearchPresentation) {
+    func refresh(_ result: SearchPresentation, applyingAvailabilityImmediately: Bool = false) {
+        if applyingAvailabilityImmediately {
+            rememberSelection()
+            cancelPendingRefresh()
+        }
         let previous = self.result
         let sameRows = previous?.sameRows(as: result) == true
-        let action: ResultRefreshAction = scrolling || dragging ? .deferRefresh : sameRows
-            ? (previous?.sameMetadata(as: result) == true ? .replaceResult : .reloadVisibleRows) : .reloadPreservingViewport
+        let action: ResultRefreshAction
+        if !applyingAvailabilityImmediately && (scrolling || dragging) { action = .deferRefresh }
+        else if sameRows { action = previous?.sameMetadata(as: result) == true ? .replaceResult : .reloadVisibleRows }
+        else { action = .reloadPreservingViewport }
         if action == .deferRefresh { pendingRefresh = result; return }
         pendingRefresh = nil; pendingClear = false
         let origin = scroll.contentView.bounds.origin
@@ -276,7 +301,7 @@ final class ResultsView: FlippedView, NSTableViewDataSource, NSTableViewDelegate
         table.minimumDocumentHeight = max(table.minimumDocumentHeight, origin.y + scroll.contentView.bounds.height)
         var row = selectedRow
         if action == .reloadPreservingViewport {
-            row = selectionIdentity.flatMap { result.index(sourceID: $0.sourceID, store: $0.store, id: $0.id, path: $0.path) } ?? max(0, selectedRow)
+            row = additionalSelectionID.flatMap { result.index(additionalID: $0) } ?? selectionIdentity.flatMap { result.index(sourceID: $0.sourceID, store: $0.store, id: $0.id, path: $0.path) } ?? max(0, selectedRow)
         }
         refreshing = true; self.result = result
         switch action {
@@ -358,6 +383,7 @@ final class ResultsView: FlippedView, NSTableViewDataSource, NSTableViewDelegate
         }
     }
     var selectedItem: ResultItem? { item(at: selectedRow) }
+    var selectedAdditional: AdditionalSearchItem? { result?.additional(at: selectedRow) }
     func select(_ row: Int, repeatKey: Bool = false) {
         repeating = repeatKey; defer { repeating = false }
         setSelection(row, reveal: true)
@@ -421,11 +447,14 @@ final class ResultsView: FlippedView, NSTableViewDataSource, NSTableViewDelegate
         let identifier = NSUserInterfaceItemIdentifier("cell")
         let cell = tableView.makeView(withIdentifier: identifier, owner: self) as? ResultCell ?? ResultCell(frame: .zero)
         cell.identifier = identifier
-        if let item = item(at: row), let result { cell.configure(item, query: result.query, icons: icons) }
+        if let item = result?.additional(at: row), let result { cell.configure(item, query: result.query) }
+        else if let item = item(at: row), let result { cell.configure(item, query: result.query, icons: icons) }
         return cell
     }
     private func rememberSelection() {
-        if let item = selectedItem { selectionIdentity = (item.source.id, item.source.store, item.id, item.path) }
+        additionalSelectionID = selectedAdditional?.id
+        if additionalSelectionID != nil { selectionIdentity = nil }
+        else if let item = selectedItem { selectionIdentity = (item.source.id, item.source.store, item.id, item.path) }
         else if result?.count == 0 { selectionIdentity = nil }
     }
     func tableViewSelectionDidChange(_ notification: Notification) {

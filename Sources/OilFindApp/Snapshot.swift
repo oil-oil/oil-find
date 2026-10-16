@@ -9,7 +9,7 @@ enum SnapshotError: Error, CustomStringConvertible {
 #if DEBUG
 enum Snapshot {
     static func run(_ arguments: [String], appExtension: ApplicationExtension? = nil, externalDrives: ExternalDriveCatalog = ExternalDriveCatalog()) throws {
-        let allowed = Set(["--snapshot", "--state", "--query", "--filter", "--sort", "--select", "--appearance", "--db", "--settings-scroll", "--language", "--coverage", "--update-notes", "--update-scroll"])
+        let allowed = Set(["--snapshot", "--state", "--query", "--filter", "--sort", "--select", "--appearance", "--db", "--settings-scroll", "--language", "--coverage", "--update-notes", "--update-scroll", "--topic-index"])
         var values: [String: String] = [:], i = 0, granted = false
         while i < arguments.count {
             if arguments[i] == "--granted" { granted = true; i += 1; continue }
@@ -28,12 +28,12 @@ enum Snapshot {
         let appearance = values["--appearance"] ?? "light"
         guard ["light", "dark"].contains(appearance) else { throw SnapshotError.failed("Invalid appearance: \(appearance)") }
         let filter = values["--filter"] ?? "all"
-        guard let kind = FilterBar.names.firstIndex(of: filter) else { throw SnapshotError.failed("Invalid filter: \(filter)") }
+        guard let kind = (FilterBar.names + ["additional"]).firstIndex(of: filter) else { throw SnapshotError.failed("Invalid filter: \(filter)") }
         let sort = values["--sort"] ?? "relevance"
         let sorts: [String: SortKey] = ["relevance": .relevance, "name": .name, "modified": .modified, "size": .size]
         guard let key = sorts[sort], let selection = Int(values["--select"] ?? "0"), selection >= 0 else { throw SnapshotError.failed("Invalid sort or selected row") }
         var store: IndexStore?
-        if !state.hasPrefix("update-") && !["indexing", "welcome", "settings", "menu"].contains(state) || (state == "settings" && values["--db"] != nil) {
+        if filter != "additional" && !state.hasPrefix("update-") && !["indexing", "welcome", "settings", "menu"].contains(state) || (state == "settings" && values["--db"] != nil) {
             let fallback = NSHomeDirectory() + "/Library/Caches/Oil Find/cli-index.oilfind"
             let defaultPath = FileManager.default.fileExists(atPath: AppDelegate.dbURL.path) ? AppDelegate.dbURL.path : fallback
             let db = NSString(string: values["--db"] ?? defaultPath).expandingTildeInPath
@@ -110,8 +110,14 @@ enum Snapshot {
             try write(view: view, appearance: window.appearance, output: output)
             return
         }
+        let topics = values["--topic-index"] == nil ? AITopicManager() : AITopicManager(detectProviders: { Set(AITopicProvider.allCases) })
+        let topicSearch: AITopicSearchProvider?
+        if let path = values["--topic-index"] {
+            topics.installSnapshot(url: URL(fileURLWithPath: NSString(string: path).expandingTildeInPath))
+            topicSearch = AITopicSearchProvider(manager: topics)
+        } else { topicSearch = nil }
         if state == "settings" {
-            let model = SettingsModel(snapshotStore: store, snapshot: true)
+            let model = SettingsModel(snapshotStore: store, snapshot: true, topics: topics)
             if values["--coverage"] == "sample" { model.expandedCoverage = ["noAccess", "scope"] }
             let controller = SettingsWindowController(model: model, appExtension: appExtension, externalDrives: externalDrives)
             guard let window = controller.window, let view = window.contentView else { throw SnapshotError.failed("Cannot create settings view") }
@@ -140,7 +146,8 @@ enum Snapshot {
         panel.appearance = NSAppearance(named: appearance == "dark" ? .darkAqua : .aqua)
         let controller = panel.searchController
         controller.supplementaryProvider = appExtension?.supplementarySearchProvider
-        try controller.prepareSnapshot(state: state, query: values["--query"] ?? "readme", options: SearchOptions(sort: key, ascending: key == .name, kind: kind == 0 ? nil : UInt8(kind)), store: store, selection: selection, additionalSources: externalDrives.searchSources() + (appExtension?.searchSources() ?? []))
+        controller.additionalSearchProvider = topicSearch
+        try controller.prepareSnapshot(state: state, query: values["--query"] ?? "readme", options: SearchOptions(sort: key, ascending: key == .name, kind: kind == 0 || filter == "additional" ? nil : UInt8(kind)), store: store, selection: selection, additionalSources: externalDrives.searchSources() + (appExtension?.searchSources() ?? []), additionalOnly: filter == "additional")
         let view = controller.view
         view.frame = NSRect(origin: .zero, size: Theme.panelSize)
         view.layoutSubtreeIfNeeded(); view.displayIfNeeded()

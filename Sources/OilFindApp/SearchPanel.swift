@@ -120,6 +120,7 @@ final class SearchPanel: NSPanel {
         fade?.start()
     }
     func hide(source: PanelSource = .interaction) {
+        searchController.panelDidHide()
         guard isVisible, !hiding else { return }
         AppLog.logger.info("panel hide source=\(source.rawValue, privacy: .public)")
         animationGeneration += 1; let token = animationGeneration

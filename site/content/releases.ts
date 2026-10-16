@@ -9,6 +9,26 @@ export const changelogTitle = { zh: '更新日志', en: 'Changelog' };
 // The single source for the website and the packaged update manifest.
 export const releases: Release[] = [
   {
+    "version": "1.7.0",
+    "date": "2026-10-16",
+    "notes": {
+      "zh": [
+        "新增免费的本地 AI 话题搜索，支持 Claude Code（含桌面 Code 会话）、Codex 和 WorkBuddy。在一个搜索面板里就能查找会话标题和正文，并直接打开原会话。",
+        "可以在设置中分别开启或关闭各个 Agent；未安装的来源默认关闭。归档的话题不会出现在搜索结果中。",
+        "减少对 Codex 未变动会话的重复读取，让各个来源轮流同步，并根据新增消息增量更新正文索引。",
+        "修复了文件事件丢失后反复全盘重扫，以及保存话题索引时报错提示数据库被锁定的问题。",
+        "分类栏新增「AI 话题」分类，并保留了切换动画；设置入口移到底栏右侧，并补充了文字标签。"
+      ],
+      "en": [
+        "Local AI conversation search is now free, with support for Claude Code (including desktop Code sessions), Codex, and WorkBuddy. Search conversation titles and messages from a single panel, and open the original conversation directly.",
+        "Enable or disable each Agent in Settings. Uninstalled sources are turned off by default, and archived conversations are excluded from search results.",
+        "Reduced repeated reads of unchanged Codex conversations, let sources take turns syncing, and updated the body index incrementally as new messages arrive.",
+        "Fixed repeated full disk rescans after lost filesystem events, as well as database lock errors when saving the conversation index.",
+        "Added AI Topics to the category bar while keeping the transition animation. The Settings entry has moved to the right side of the bottom bar with an added text label."
+      ]
+    }
+  },
+  {
     version: '1.6.2', date: '2026-10-13',
     notes: {
       zh: ['修复文件频繁变化时后台维护任务可能积压的问题：合并尚未完成的维护任务，让图片和文档识别能继续向前处理。', '慢速目录核对结束后再计算下一次维护的间隔，避免连续重复遍历。保留 1.6.1 的 CPU 调度优化。'],

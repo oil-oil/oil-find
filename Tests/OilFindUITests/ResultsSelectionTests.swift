@@ -5,6 +5,40 @@ import OilFindCore
 @testable import OilFindApp
 
 final class ResultsSelectionTests: XCTestCase {
+    func testCategoryMotionSurvivesSearchRefreshAndLayout() throws {
+        _ = NSApplication.shared
+        if Theme.Motion.reduced { throw XCTSkip("Category motion respects Reduce Motion") }
+        final class Provider: AdditionalSearchProvider {
+            var isEnabled = true
+            let title = "AI Topics"
+            var onChange: (() -> Void)?
+            func prepareSearch(_ query: Query, isCancelled: @escaping () -> Bool) -> () throws -> [AdditionalSearchItem] { { [] } }
+            func visibilityChanged(_ visible: Bool) { }
+        }
+        let provider = Provider(), controller = SearchViewController(snapshot: true)
+        controller.additionalSearchProvider = provider
+        let window = NSWindow(contentRect: NSRect(x: -2000, y: -2000, width: 800, height: 560), styleMask: .borderless, backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false; window.contentViewController = controller
+        window.orderFrontRegardless(); defer { window.close() }
+        controller.view.layoutSubtreeIfNeeded()
+        let filters = controller.filters
+        let plate = try XCTUnwrap(filters.subviews.compactMap { $0 as? TintPlate }.first)
+        let layer = try XCTUnwrap(plate.layer)
+        for index in [1, 8, FilterBar.names.count, 0] {
+            filters.select(index)
+            let spring = try XCTUnwrap(layer.animation(forKey: "position") as? CASpringAnimation)
+            XCTAssertEqual(spring.stiffness, Theme.Motion.chip.stiffness)
+            XCTAssertEqual(spring.damping, Theme.Motion.chip.damping)
+            controller.view.layoutSubtreeIfNeeded()
+            XCTAssertNotNil(layer.animation(forKey: "position"), "Layout must not snap an active category transition to its endpoint")
+            provider.onChange?(); controller.view.layoutSubtreeIfNeeded()
+            let afterRefresh = try XCTUnwrap(layer.animation(forKey: "position") as? CASpringAnimation)
+            XCTAssertEqual(afterRefresh.fromValue as? NSValue, spring.fromValue as? NSValue)
+            let selected = try XCTUnwrap(filters.subviews.compactMap { $0 as? ChromeButton }.first { $0.active })
+            XCTAssertEqual(plate.frame, selected.frame)
+            XCTAssertTrue(selected.subviews.compactMap { $0 as? NSTextField }.allSatisfy { $0.layer?.animation(forKey: "opacity") != nil })
+        }
+    }
     func testPointerSelectionSnapsAndKeyboardSelectionKeepsMotion() throws {
         _ = NSApplication.shared
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("OilFindSelection-\(UUID().uuidString)")

@@ -70,7 +70,7 @@ export const GITHUB_URL = 'https://github.com/oil-oil/oil-find';
 export const dict: Record<Language, LandingCopy> = {
   zh: {
     title: "Oil Find：苹果版的 Everything，免费开源的 Mac 文件搜索工具",
-    description: "按 ⇧⌘F，屏幕正中弹出搜索框，每敲一个键不到 10 毫秒出结果。支持拼音首字母、通配符、正则、实时更新和外置硬盘，不依赖 Spotlight。免费开源，Pro 还能搜图片和文档里的文字。",
+    description: "按 ⇧⌘F 搜索 Mac 文件名和本机 Claude Code、Codex、WorkBuddy 对话。支持拼音、通配符和正则。免费开源，索引只留在本机。",
     'nav.speed': '速度', 'nav.syntax': '语法', 'nav.github': 'GitHub', 'nav.download': '下载', 'nav.lang': 'EN',
     lead: ['不到 10 毫秒，', '找到 Mac 上的任何文件'],
     placeholder: '在这里试试：wd、png、readme',
@@ -90,7 +90,7 @@ export const dict: Record<Language, LandingCopy> = {
     'note.open.h': '第一次打开', 'note.open': '应用还没有经过苹果公证。双击后如果被拦下，去「系统设置 → 隐私与安全性」，在底部点「仍要打开」。只需要一次。',
     'note.opensource.h': '开源', 'note.opensource': '免费版的代码在 GitHub 上，MIT 许可证，欢迎提问题和改进。Pro 功能不开源。',
     'note.fda.h': '完全磁盘访问', 'note.fda': '可选。不开也能用，只是搜不到邮件和其他应用的数据。',
-    'note.privacy.h': '隐私', 'note.privacy': '免费版只索引文件名，不读文件内容；Pro 识别图片、读取文档也全部在这台 Mac 上完成。索引只存在本机。每天检查一次更新，只读取版本信息。',
+    'note.privacy.h': '隐私', 'note.privacy': '文件搜索只索引文件名，不读取文件正文。启用 AI 话题搜索后，Oil Find 会读取所选来源保存在本机的对话标题与正文，并在本机建立索引，不会上传。Pro 版的图片识别和文档读取也都在本机完成。应用每天自动检查一次更新，只读取版本信息。',
     'legal.github': 'GitHub', 'legal.download': '下载 macOS 版',
     chips: ['全部', '文件夹', '应用', '文档', '图片', '代码'],
     hints: [['↩', '打开'], ['↑↓', '选择'], ['Tab', '切换筛选']],
@@ -108,7 +108,7 @@ export const dict: Record<Language, LandingCopy> = {
       { icon: 'timer', name: '每敲一个键，不到 10 毫秒', path: '85 万个文件，连续输入时只在上一次的结果里收窄', meta: '速度', act: { scroll: 'speed' } },
       { icon: 'pinyin', name: '拼音也能搜', path: '输入 <code>wd</code> 找到「文档」，输入 <code>xmwd</code> 找到「项目文档」', meta: '中文', act: { fill: 'wd' } },
       { icon: 'live', name: '文件一改，结果就变', path: '新建、改名、移动、删除，一秒内生效。关机期间的变动开机后自动补齐', meta: '实时', act: { scroll: 'speed' } },
-      { icon: 'lock', name: '只看文件名', path: '不读文件内容，索引只存在这台 Mac 上', meta: '隐私', act: { scroll: 'notes' } },
+      { icon: 'lock', name: '索引留在本机', path: '文件名和已启用的 AI 对话都在本机建立索引，不会上传', meta: '隐私', act: { scroll: 'notes' } },
       { icon: 'syntax', name: '查询语法', path: '<code>*.pdf</code>　<code>ext:png</code>　<code>!node_modules</code>　<code>dm:today</code>　<code>~/Desktop/</code>', meta: '进阶', act: { scroll: 'syntax' } },
       { icon: 'file', name: '开源', path: 'MIT 许可证，代码在 GitHub 上', meta: 'GitHub', act: { href: GITHUB_URL } },
     ],
@@ -122,7 +122,7 @@ export const dict: Record<Language, LandingCopy> = {
   },
   en: {
     title: "Oil Find: Everything for Mac. Free, open-source file search",
-    description: "Press ⇧⌘F and results appear as you type, in under 10 ms. Wildcards, regex, pinyin, live updates and external drives. Free and open source.",
+    description: "Search Mac files and local Claude Code, Codex, and WorkBuddy conversations with ⇧⌘F. Free, open source, local indexes.",
     'nav.speed': 'Speed', 'nav.syntax': 'Syntax', 'nav.github': 'GitHub', 'nav.download': 'Download', 'nav.lang': '中文',
     lead: ['Any file on your Mac, ', 'in under 10 ms'],
     placeholder: 'Try it here: wd, png, readme',
@@ -142,7 +142,7 @@ export const dict: Record<Language, LandingCopy> = {
     'note.open.h': 'Opening it the first time', 'note.open': 'The app isn’t notarized by Apple yet. If macOS blocks it, go to System Settings → Privacy & Security and click “Open Anyway” at the bottom. Once is enough.',
     'note.opensource.h': 'Open source', 'note.opensource': 'The free version’s code is on GitHub under the MIT license. Issues and pull requests are welcome. Pro features are not open source.',
     'note.fda.h': 'Full Disk Access', 'note.fda': 'Optional. Without it, Mail and other apps’ data can’t be searched.',
-    'note.privacy.h': 'Privacy', 'note.privacy': 'The free version indexes file names only, never file contents, and Pro reads images and documents entirely on your Mac. The index stays on this Mac. Oil Find checks for updates once a day and only reads version info.',
+    'note.privacy.h': 'Privacy', 'note.privacy': 'File search indexes names without reading file contents. When AI Topics is enabled, Oil Find reads titles and body text saved locally by your chosen sources and builds the index on your Mac. Nothing is uploaded. Pro image and document processing also stays on your Mac. Daily update checks only read version info.',
     'legal.github': 'GitHub', 'legal.download': 'Download for macOS',
     chips: ['All', 'Folders', 'Apps', 'Documents', 'Images', 'Code'],
     hints: [['↩', 'Open'], ['↑↓', 'Select'], ['Tab', 'Switch filter']],
@@ -161,7 +161,7 @@ export const dict: Record<Language, LandingCopy> = {
       { icon: 'timer', name: 'Under 10 ms per keystroke', path: '850,000 files. Each new letter only narrows the previous result', meta: 'Speed', act: { scroll: 'speed' } },
       { icon: 'pinyin', name: 'Pinyin search', path: 'Type <code>wd</code> to find 文档, <code>xmwd</code> to find 项目文档', meta: 'Chinese', act: { fill: 'wd' } },
       { icon: 'live', name: 'Results follow your files', path: 'Create, rename, move, delete: reflected within a second, even after a restart', meta: 'Live', act: { scroll: 'speed' } },
-      { icon: 'lock', name: 'File names only', path: 'Never reads file contents. The index stays on this Mac', meta: 'Privacy', act: { scroll: 'notes' } },
+      { icon: 'lock', name: 'Indexes stay on your Mac', path: 'File names and enabled AI conversations are indexed locally and never uploaded', meta: 'Privacy', act: { scroll: 'notes' } },
       { icon: 'syntax', name: 'Query syntax', path: '<code>*.pdf</code>　<code>ext:png</code>　<code>!node_modules</code>　<code>dm:today</code>　<code>~/Desktop/</code>', meta: 'Advanced', act: { scroll: 'syntax' } },
       { icon: 'file', name: 'Open source', path: 'MIT licensed. The code is on GitHub', meta: 'GitHub', act: { href: GITHUB_URL } },
     ],
@@ -242,12 +242,13 @@ export const proCopy = {
     nav: 'Pro', footer: 'Oil Find Pro', recover: '找回授权码', questions: '常见问题',
     compareLink: '对比免费版与 Pro',
     compare: {
-      freeSummary: '按文件名快速查找', proSummary: '还能搜内容与离线硬盘',
+      freeSummary: '搜文件名与 AI 对话', proSummary: '还能搜内容与离线硬盘',
       title: '选择适合你的搜索方式', feature: '功能', free: '免费版', pro: 'Pro',
       rows: [
         ['按文件名搜索：拼音、通配符、正则，按类型、大小、时间筛选', '✓', '✓'],
         ['实时更新、Quick Look 预览、拖放、全键盘操作', '✓', '✓'],
         ['排除文件夹和文件类型、应用内更新', '✓', '✓'],
+        ['AI 对话搜索：Claude Code、Codex 和 WorkBuddy 本地对话标题与正文', '✓', '✓'],
         ['外置磁盘：插上就建立索引，实时更新', '✓', '✓'],
         ['外置磁盘拔掉后也能搜到', '—', '✓'],
         ['图片内容：截图、照片里的文字与画面', '—', '✓'],
@@ -296,12 +297,13 @@ export const proCopy = {
     nav: 'Pro', footer: 'Oil Find Pro', recover: 'Recover License Key', questions: 'Questions',
     compareLink: 'Compare Free and Pro',
     compare: {
-      freeSummary: 'Fast file name search', proSummary: 'Content and offline drives, too',
+      freeSummary: 'File names and AI conversations', proSummary: 'Content and offline drives, too',
       title: 'Choose how you search', feature: 'Feature', free: 'Free', pro: 'Pro',
       rows: [
         ['Search by file name: pinyin, wildcards, regex, filters by kind, size and date', '✓', '✓'],
         ['Live updates, Quick Look, drag and drop, full keyboard control', '✓', '✓'],
         ['Excluded folders and file types, in-app updates', '✓', '✓'],
+        ['AI conversations: local titles and body text from Claude Code, Codex, and WorkBuddy', '✓', '✓'],
         ["External drives: indexed when plugged in, kept up to date", '✓', '✓'],
         ["External drives stay searchable when unplugged", '—', '✓'],
         ['Image content: text and objects in screenshots and photos', '—', '✓'],
@@ -338,6 +340,7 @@ export function footerQuestions(lang: Language): { q: string; a: string }[] {
   const t = dict[lang];
   return [
     ...searchQuestions[lang],
+    aiTopicQuestions[lang],
     ...(['open', 'opensource', 'fda', 'privacy'] as const).map(key => ({ q: t[`note.${key}.h`], a: t[`note.${key}`] })),
   ];
 }
@@ -346,7 +349,7 @@ const searchQuestions: Record<Language, { q: string; a: string }[]> = {
   "zh": [
     {
       "q": "和 Spotlight 有什么不同",
-      "a": "Spotlight 同时搜文件内容、应用和网页，结果多，排序难以预料。Oil Find 只按文件名找，自己维护一份内存索引，每敲一个键都在 10 毫秒内出结果，还支持拼音首字母、通配符和正则。"
+      "a": "Spotlight 同时搜索文件内容、应用和网页。Oil Find 的文件搜索针对文件名建立内存索引，支持拼音首字母、通配符和正则表达式；同一个搜索面板还能查找本地 Claude Code、Codex 和 WorkBuddy 对话。"
     },
     {
       "q": "苹果版的 Everything",
@@ -356,11 +359,22 @@ const searchQuestions: Record<Language, { q: string; a: string }[]> = {
   "en": [
     {
       "q": "How it differs from Spotlight",
-      "a": "Spotlight searches file contents, apps and the web at once, so results are many and their order is hard to predict. Oil Find finds files by name only, keeps its own in-memory index and answers every keystroke in under 10 ms, with pinyin initials, wildcards and regex."
+      "a": "Spotlight searches file contents, apps, and the web. Oil Find indexes file names in memory, with pinyin, wildcards, and regex. The same panel also searches local conversations from Claude Code, Codex, and WorkBuddy."
     },
     {
       "q": "Everything for Mac",
       "a": "It works like Everything on Windows: an index of every file name on your disk, with results as you type. Everything is Windows-only; Oil Find is a native Mac app."
     }
   ]
+};
+
+const aiTopicQuestions: Record<Language, { q: string; a: string }> = {
+  "zh": {
+    "q": "能搜哪些 AI 对话？",
+    "a": "免费版支持搜索保存在本机的 Claude Code、Codex 和 WorkBuddy 对话标题与正文，也包括 Claude 桌面端的 Code 会话。Claude 普通网页聊天及 WorkBuddy 尚未保存到本机的云端内容、已归档或删除的 WorkBuddy 会话、WorkBuddy 临时 Quick Ask 和子代理会话都不会出现在结果中。各来源可在设置中单独开关。"
+  },
+  "en": {
+    "q": "Which AI conversations can I search?",
+    "a": "The free version searches titles and body text saved locally by Claude Code, Codex, and WorkBuddy, including Code sessions in the Claude desktop app. Regular Claude web chats, WorkBuddy cloud content not saved locally, archived or deleted WorkBuddy sessions, temporary WorkBuddy Quick Asks, and WorkBuddy subagent sessions are excluded. Each source has its own switch in Settings."
+  }
 };

@@ -109,6 +109,12 @@ class ChromeButton: NSButton {
     var active = false { didSet { if active != oldValue { updateFilterText(); needsDisplay = true } } }
     var hovered = false { didSet { normalLabel.textColor = hovered ? .labelColor : .secondaryLabelColor; needsDisplay = true } }
     var onPress: (() -> Void)?
+    override var title: String {
+        didSet {
+            normalLabel.stringValue = title; activeLabel.stringValue = title
+            needsDisplay = true
+        }
+    }
     var trailingSymbol: NSImage?
     var textTint: NSColor?
     private var tracking: NSTrackingArea?

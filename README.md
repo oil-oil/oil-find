@@ -19,7 +19,7 @@
 
 Oil Find is a file search tool for macOS that works like Everything on Windows: it keeps its own in-memory index of every file name on your disk instead of relying on Spotlight. Press ⇧⌘F, a search field appears in the middle of the screen, and results update with every keystroke. When files are created, renamed or deleted, the index follows along in real time.
 
-Everything about searching by file name, external drives included, is in the free, open-source version. Searching the contents of images and documents, and drives you've unplugged, is part of the paid [Pro](#oil-find-pro) add-on.
+File-name search, connected external drives, and local Claude Code, Codex, and WorkBuddy topic search are free and open source. All searches files and topics together; AI Topics shows conversations only. Searching inside images and documents, and unplugged drives, is part of the paid [Pro](#oil-find-pro) add-on.
 
 ## Why it's fast
 
@@ -78,6 +78,7 @@ The free version is open source and free forever. Pro is a closed-source paid ad
 | | Free | Pro |
 | --- | :---: | :---: |
 | Search by file name: pinyin, wildcards, regex, filters by kind, size and date | ✓ | ✓ |
+| Local AI topics: Claude Code, desktop Code sessions, Codex, and WorkBuddy | ✓ | ✓ |
 | Live updates, Quick Look, drag and drop, full keyboard control | ✓ | ✓ |
 | Excluded folders and file types, in-app updates | ✓ | ✓ |
 | External drives: indexed when plugged in, kept up to date | ✓ | ✓ |
@@ -125,7 +126,7 @@ Building from source gives you the free version, without Pro. Your own builds ar
 
 ## Privacy
 
-- Oil Find reads file names, sizes and modification dates only, never file contents. With Pro image or document content search on, it reads those files on your Mac to extract their text, and the results stay on your Mac too.
+- File-name search reads names, sizes, and modification dates. Local AI topic search reads locally saved titles and conversation text from Claude Code, Codex, and WorkBuddy, without uploading them. Pro image or document search reads those files on your Mac and keeps the results there too.
 - The index stays on your Mac in `~/Library/Application Support/Oil Find/`.
 - A daily update check fetches one version file and sends no device or usage data. You can turn it off in Settings.
 - With Pro, the license is verified online once a day. Only the license key, a device identifier and the device name are sent.
@@ -135,7 +136,7 @@ Building from source gives you the free version, without Pro. Your own builds ar
 - Apple silicon and macOS 14 or later only.
 - Network volumes aren't supported.
 - After you unplug an external drive, the free version can't search its files; Pro can.
-- The free version searches file names only; Pro also searches the text inside images and documents.
+- AI topic search covers locally saved Claude Code, Claude desktop Code sessions, Codex, and WorkBuddy conversations. Regular Claude web chats, WorkBuddy cloud content not saved locally, and archived or deleted WorkBuddy sessions, temporary WorkBuddy Quick Asks, and WorkBuddy subagent sessions are excluded. Pro also searches text inside images and documents.
 
 ## Project layout
 

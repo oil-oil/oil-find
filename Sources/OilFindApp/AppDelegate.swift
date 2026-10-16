@@ -17,6 +17,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         super.init()
     }
     private let panel = SearchPanel()
+    private let topics = AITopicManager()
+    private lazy var topicSearch = AITopicSearchProvider(manager: topics)
     private var statusItem: NSStatusItem?
     private var statusMenu: NSMenu?
     private var settingsItem: NSMenuItem?, extensionItem: NSMenuItem?
@@ -55,6 +57,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         hotKey = HotKey(keyCode: key, modifiers: modifiers) { [weak self] in self?.handleHotKey() }
         buildMenu(keyCode: key, modifiers: modifiers)
         panel.searchController.supplementaryProvider = appExtension?.supplementarySearchProvider
+        panel.searchController.additionalSearchProvider = topicSearch
+        topics.start()
         panel.searchController.additionalSources = { [weak self] in (self?.externalDrives.searchSources() ?? []) + (self?.appExtension?.searchSources() ?? []) }
         let sourcesChanged: () -> Void = { [weak self] in
             self?.panel.searchController.sourcesChanged()
@@ -189,10 +193,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
     @objc func showSettings() { presentSettings() }
     private func presentSettings() {
+        topics.refreshProviderAvailability()
         panel.hide(source: .settings)
         NSApp.activate(ignoringOtherApps: true)
         if settingsController == nil {
-            let model = SettingsModel(); model.manager = manager
+            let model = SettingsModel(topics: topics); model.manager = manager
             model.suspendHotKey = { [weak self] in self?.hotKey?.unregister(); self?.hotKey = nil }
             model.registerHotKey = { [weak self] code, mask in self?.registerHotKey(keyCode: code, modifiers: mask) ?? false }
             model.onConfigChange = { [weak self] in
@@ -268,6 +273,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func application(_ application: NSApplication, open urls: [URL]) {
         for url in urls { appExtension?.handle(url) }
     }
-    func applicationWillTerminate(_ notification: Notification) { if !secondaryInstance { appExtension?.stop(); externalDrives.stop(); UpdateManager.shared.stop() }; settingsController?.model.stopRefreshing(); permissionTimer?.invalidate(); hotKey?.unregister(); manager?.stop() }
+    func applicationWillTerminate(_ notification: Notification) { if !secondaryInstance { topics.stop(); appExtension?.stop(); externalDrives.stop(); UpdateManager.shared.stop() }; settingsController?.model.stopRefreshing(); permissionTimer?.invalidate(); hotKey?.unregister(); manager?.stop() }
     deinit { if let languageObserver { NotificationCenter.default.removeObserver(languageObserver) } }
 }
