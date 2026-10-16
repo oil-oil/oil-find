@@ -255,10 +255,16 @@ final class M7LiveTests: XCTestCase {
         manager.start(); defer { manager.stop() }
         XCTAssertTrue(eventually { manager.state == .ready })
         _ = manager.watcherEpochForTesting
-        let old = try XCTUnwrap(manager.store), safeCursor = old.read { old.lastEventId }
+        let old = try XCTUnwrap(manager.store)
+        let cursorLock = NSLock()
+        var safeCursor: UInt64?
         let scannedRoot = DispatchSemaphore(value: 0), resume = DispatchSemaphore(value: 0), checked = DispatchSemaphore(value: 0)
         defer { resume.signal() }
         manager.onScannerCreated = { scanner in
+            // Ordinary events may advance the old catalog until the scan watcher begins
+            // buffering. Its cursor becomes stable only after that watcher is installed.
+            let cursor = old.read { old.lastEventId }
+            cursorLock.lock(); safeCursor = cursor; cursorLock.unlock()
             scanner.installDirectoryCompletionHook { relative in
                 if relative.isEmpty { scannedRoot.signal(); _ = resume.wait(timeout: .now() + 5) }
             }
@@ -268,14 +274,18 @@ final class M7LiveTests: XCTestCase {
                 updater?.onPhase3 = nil
                 XCTAssertTrue(manager?.store === old)
                 manager?.saveNow()
-                XCTAssertEqual(IndexStore.load(from: f.db.path)?.lastEventId, safeCursor)
+                cursorLock.lock(); let expectedCursor = safeCursor; cursorLock.unlock()
+                XCTAssertNotNil(expectedCursor)
+                XCTAssertEqual(IndexStore.load(from: f.db.path)?.lastEventId, expectedCursor)
                 checked.signal()
             }
         }
         manager.rescan()
         XCTAssertTrue(eventually { scannedRoot.wait(timeout: .now()) == .success })
+        cursorLock.lock(); let bufferedCursor = safeCursor; cursorLock.unlock()
+        let expectedCursor = try XCTUnwrap(bufferedCursor)
         try f.file("buffered.txt")
-        manager.injectEvents(f.events(["buffered.txt"], id: safeCursor + 10_000), mustRescanAll: false)
+        manager.injectEvents(f.events(["buffered.txt"], id: expectedCursor + 10_000), mustRescanAll: false)
         _ = manager.watcherEpochForTesting; resume.signal()
         XCTAssertTrue(eventually { checked.wait(timeout: .now()) == .success })
         XCTAssertTrue(eventually { manager.store !== old && !manager.isRescanning })
