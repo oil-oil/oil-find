@@ -70,6 +70,9 @@ final class AITopicSearchProvider: AdditionalSearchProvider {
         let length = max(0, title.utf8.count - terms.reduce(0) { $0 + $1.utf8.count })
         let age = Date().timeIntervalSince1970 - topic.modified
         let recent = age <= 86400 ? 60 : age <= 604800 ? 45 : age <= 2592000 ? 30 : age <= 31536000 ? 10 : 0
-        return Int32(scores.reduce(0, +) / scores.count - 2 * min(length, 64) + 60 + recent)
+        let average: Int = scores.reduce(0, +) / scores.count
+        let lengthPenalty: Int = 2 * min(length, 64)
+        let rank: Int = average - lengthPenalty + 60 + recent
+        return Int32(rank)
     }
 }
