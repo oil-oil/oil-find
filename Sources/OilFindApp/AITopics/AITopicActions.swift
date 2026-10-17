@@ -38,13 +38,26 @@ enum AITopicActions {
 
 final class AITopicIcons {
     private var images: [AITopicProvider: NSImage] = [:]
+    static func bundledImage(_ provider: AITopicProvider, directories: [URL]? = nil) -> NSImage? {
+        // SwiftPM's generated accessor misses Contents/Resources in a packaged macOS app.
+        // Resolve both installed and SwiftPM layouts without its fatal build-path fallback.
+        let locations = directories ?? [Bundle.main.resourceURL, Bundle.main.bundleURL,
+                                       Bundle(for: AITopicIcons.self).bundleURL.deletingLastPathComponent()].compactMap { $0 }
+        for directory in locations {
+            let url = directory.appendingPathComponent("OilFind_OilFindApp.bundle")
+            if let bundle = Bundle(url: url),
+               let imageURL = bundle.url(forResource: provider.rawValue, withExtension: "png", subdirectory: "Resources/TopicIcons"),
+               let image = NSImage(contentsOf: imageURL) { return image }
+        }
+        return nil
+    }
     func image(_ provider: AITopicProvider) -> NSImage {
         if let image = images[provider] { return image }
         let identifier = AITopicInstallation.bundleIdentifiers[provider]!
         let image: NSImage
         if provider != .codex, let app = NSWorkspace.shared.urlForApplication(withBundleIdentifier: identifier) {
             image = NSWorkspace.shared.icon(forFile: app.path)
-        } else if let url = Bundle.module.url(forResource: provider.rawValue, withExtension: "png", subdirectory: "Resources/TopicIcons"), let asset = NSImage(contentsOf: url) {
+        } else if let asset = Self.bundledImage(provider) {
             image = asset
         } else if let app = NSWorkspace.shared.urlForApplication(withBundleIdentifier: identifier) {
             image = NSWorkspace.shared.icon(forFile: app.path)

@@ -38,6 +38,7 @@ unset OILFIND_SIGN_IDENTITY
 VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Resources/Info.plist)"
 ARCHIVE_PATH="$PROJECT_DIR/build/Oil-Find-$VERSION.zip"
 ditto -c -k --sequesterRsrc --keepParent "build/Oil Find.app" "$ARCHIVE_PATH"
+python3 Tests/Scripts/test_packaged_launch.py "$ARCHIVE_PATH"
 mkdir -p site/public/downloads site/public/updates
 node --experimental-strip-types scripts/generate-update-manifest.mjs Resources/Info.plist "$ARCHIVE_PATH" site/public/updates/latest.json
 cp "$ARCHIVE_PATH" "site/public/downloads/Oil-Find-$VERSION.zip"

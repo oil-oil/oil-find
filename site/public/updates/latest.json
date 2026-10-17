@@ -1,25 +1,17 @@
 {
-  "version": "1.7.0",
-  "build": 15,
-  "url": "https://find.oiloil.org/downloads/Oil-Find-1.7.0.zip",
-  "size": 2732063,
-  "sha256": "11756acc93f70a21b396dc24d69195e541fe50fb913806fc32623f18f3e8062d",
+  "version": "1.7.1",
+  "build": 16,
+  "url": "https://find.oiloil.org/downloads/Oil-Find-1.7.1.zip",
+  "size": 2732116,
+  "sha256": "6287c45b727163080f5a9d9395db910e0d1930b5c2da854a1b479b074cbd9f9b",
   "minimumSystemVersion": "14.0",
-  "published": "2026-10-16",
+  "published": "2026-10-17",
   "notes": {
     "zh": [
-      "新增免费的本地 AI 话题搜索，支持 Claude Code（含桌面 Code 会话）、Codex 和 WorkBuddy。在一个搜索面板里就能查找会话标题和正文，并直接打开原会话。",
-      "可以在设置中分别开启或关闭各个 Agent；未安装的来源默认关闭。归档的话题不会出现在搜索结果中。",
-      "减少对 Codex 未变动会话的重复读取，让各个来源轮流同步，并根据新增消息增量更新正文索引。",
-      "修复了文件事件丢失后反复全盘重扫，以及保存话题索引时报错提示数据库被锁定的问题。",
-      "分类栏新增「AI 话题」分类，并保留了切换动画；设置入口移到底栏右侧，并补充了文字标签。"
+      "修复了 1.7.0 在部分电脑上启动直接退出、自动更新失败的问题。AI 话题图标现在会从安装包内正确读取；即使缺少图标，也不会导致应用崩溃。"
     ],
     "en": [
-      "Local AI conversation search is now free, with support for Claude Code (including desktop Code sessions), Codex, and WorkBuddy. Search conversation titles and messages from a single panel, and open the original conversation directly.",
-      "Enable or disable each Agent in Settings. Uninstalled sources are turned off by default, and archived conversations are excluded from search results.",
-      "Reduced repeated reads of unchanged Codex conversations, let sources take turns syncing, and updated the body index incrementally as new messages arrive.",
-      "Fixed repeated full disk rescans after lost filesystem events, as well as database lock errors when saving the conversation index.",
-      "Added AI Topics to the category bar while keeping the transition animation. The Settings entry has moved to the right side of the bottom bar with an added text label."
+      "Fixed an issue in 1.7.0 where Oil Find would quit unexpectedly on launch and cause automatic updates to fail on some Macs. AI conversation icons now load correctly from within the app bundle, and missing icons will no longer crash the app."
     ]
   }
 }

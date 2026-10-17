@@ -9,6 +9,18 @@ export const changelogTitle = { zh: '更新日志', en: 'Changelog' };
 // The single source for the website and the packaged update manifest.
 export const releases: Release[] = [
   {
+    "version": "1.7.1",
+    "date": "2026-10-17",
+    "notes": {
+      "zh": [
+        "修复了 1.7.0 在部分电脑上启动直接退出、自动更新失败的问题。AI 话题图标现在会从安装包内正确读取；即使缺少图标，也不会导致应用崩溃。"
+      ],
+      "en": [
+        "Fixed an issue in 1.7.0 where Oil Find would quit unexpectedly on launch and cause automatic updates to fail on some Macs. AI conversation icons now load correctly from within the app bundle, and missing icons will no longer crash the app."
+      ]
+    }
+  },
+  {
     "version": "1.7.0",
     "date": "2026-10-16",
     "notes": {
