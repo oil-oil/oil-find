@@ -7,6 +7,7 @@ import OilFindCore
 final class SettingsModel: ObservableObject {
     @Published private(set) var language: AppLanguage
     @Published var launchAtLogin: Bool
+    @Published private(set) var showMenuBarItem: Bool
     let topics: AITopicManager
     let update: UpdateManager
     private var languageObserver: NSObjectProtocol?
@@ -41,6 +42,7 @@ final class SettingsModel: ObservableObject {
     private var inspectionGeneration = 0
     var onConfigChange: (() -> Void)?
     var onPinyinChange: (() -> Void)?
+    var onMenuBarItemChange: ((Bool) -> Void)?
     var suspendHotKey: (() -> Void)?
     var registerHotKey: ((UInt32, UInt32) -> Bool)?
     var onContentChange: (() -> Void)?
@@ -56,6 +58,7 @@ final class SettingsModel: ObservableObject {
         self.language = L10n.language
         self.update = snapshot ? UpdateManager(snapshot: true) : .shared
         launchAtLogin = snapshot ? false : SMAppService.mainApp.status == .enabled
+        showMenuBarItem = preferences.object(forKey: "showMenuBarItem") as? Bool ?? true
         if !snapshot { SettingsPreferences.register() }
         let defaults = UserDefaults.standard
         indexDependencyDirs = !snapshot && defaults.bool(forKey: "indexDependencyDirs")
@@ -146,6 +149,11 @@ final class SettingsModel: ObservableObject {
         } catch { loginError = error.localizedDescription }
         launchAtLogin = SMAppService.mainApp.status == .enabled
         onContentChange?()
+    }
+    func setShowMenuBarItem(_ enabled: Bool) {
+        showMenuBarItem = enabled
+        preferences.set(enabled, forKey: "showMenuBarItem")
+        onMenuBarItemChange?(enabled)
     }
     func setPreviewWithSpace(_ enabled: Bool) {
         previewWithSpace = enabled
@@ -290,6 +298,10 @@ private struct SettingsForm: View {
                 VStack(alignment: .leading, spacing: 5) {
                     Toggle(L10n.text("settings.login"), isOn: Binding(get: { model.launchAtLogin }, set: model.setLogin))
                     if let error = model.loginError { hint(error).foregroundStyle(.red) }
+                }
+                VStack(alignment: .leading, spacing: 5) {
+                    Toggle(L10n.text("settings.showMenuBarItem"), isOn: Binding(get: { model.showMenuBarItem }, set: model.setShowMenuBarItem))
+                    hint(L10n.text("settings.showMenuBarItemHint"))
                 }
                 VStack(alignment: .leading, spacing: 5) {
                     HStack {

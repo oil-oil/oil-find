@@ -14,7 +14,7 @@ public enum SettingsPreferences {
     public static func register(in defaults: UserDefaults = .standard) {
         defaults.register(defaults: [
             "hotKeyCode": Int(Shortcut.defaultKeyCode), "hotKeyModifiers": Int(Shortcut.defaultModifiers),
-            "previewWithSpace": true, "excludedExtensions": [String](), "pinyinEnabled": true, "userExcludedPaths": [String](), "skippedFullDiskAccess": false, "didFinishOnboarding": false,
+            "showMenuBarItem": true, "previewWithSpace": true, "excludedExtensions": [String](), "pinyinEnabled": true, "userExcludedPaths": [String](), "skippedFullDiskAccess": false, "didFinishOnboarding": false,
             "indexDependencyDirs": false, "indexPackageContents": false, "indexUserLibrary": false, "indexSystemDirs": false,
             "sortKey": "relevance", "sortAscending": false
         ])

@@ -176,6 +176,8 @@ enum L10n {
         "settings.language": ("语言", "Language"),
         "settings.language.system": ("跟随系统", "Follow System"),
         "settings.login": ("登录时启动", "Launch at Login"),
+        "settings.showMenuBarItem": ("在菜单栏中显示", "Show in Menu Bar"),
+        "settings.showMenuBarItemHint": ("隐藏后，可使用全局快捷键或重新打开 Oil Find，然后点击搜索面板中的“设置”恢复显示。", "When hidden, use the global shortcut or reopen Oil Find, then choose Settings in the search panel to show it again."),
         "settings.shortcut": ("全局快捷键", "Global Shortcut"),
         "settings.record": ("按下新的快捷键", "Press a new shortcut"),
         "settings.shortcutConflict": ("这个快捷键已被其他应用占用", "This shortcut is in use by another app"),
