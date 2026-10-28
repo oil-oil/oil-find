@@ -47,7 +47,8 @@ The default scope leaves out dependency folders, app and package internals, Libr
 | `readme !node_modules` | Contains readme, not inside node_modules |
 | `*.png` | Wildcards match the whole name |
 | `~/Desktop/ png` | Only under the Desktop |
-| `ext:pdf;docx` | By extension |
+| `ext:pdf;docx`, `ext:pdf,docx` | By extension; separate multiple types with a semicolon or comma |
+| `noext:` | Files without an extension, such as `Makefile` or `.env` |
 | `kind:image` | By kind: folder, app, doc, image, video, audio, code, archive |
 | `file:`, `folder:` | Files only, or folders only |
 | `size:>10mb`, `size:1mb..5mb` | By size |

@@ -12,6 +12,9 @@ describe.each(['zh', 'en'] as const)('search demonstration (%s)', lang => {
   it('keeps the example searches useful with localized file names', () => {
     expect(names(lang, 'readme !node_modules')).toEqual(['README.md', 'readme-assets']);
     expect(names(lang, 'ext:png')).toHaveLength(4);
+    expect(names(lang, 'ext:md,png')).toEqual(names(lang, 'ext:md;png'));
+    expect(names(lang, 'ext:md，png')).toEqual(names(lang, 'ext:md;png'));
+    expect(names(lang, 'noext:')).toEqual(['Makefile']);
     expect(names(lang, '~/Desktop/ png')).toHaveLength(3);
   });
 

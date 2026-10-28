@@ -52,7 +52,7 @@ private struct DriverNeedle {
     var caseSensitive: Bool = false
 }
 private enum AtomTag: UInt8 {
-    case name, path, glob, regex, ext, kind, filesOnly, foldersOnly, fileName, folderName, size, modified
+    case name, path, glob, regex, ext, noExtension, kind, filesOnly, foldersOnly, fileName, folderName, size, modified
 }
 private struct ByteSpan {
     var bytes: UnsafePointer<UInt8>?
@@ -382,6 +382,7 @@ public enum Searcher {
                         mask |= 1 << kind
                     }
                     hot.extKindMask = mask
+                case .noExtension: hot.tag = .noExtension
                 case .kind(let k): hot.tag = .kind; hot.lower = UInt64(k)
                 case .filesOnly: hot.tag = .filesOnly
                 case .foldersOnly: hot.tag = .foldersOnly
@@ -398,6 +399,7 @@ public enum Searcher {
                 let atom = plan.atoms[start]
                 switch atom.tag {
                 case .ext: if atom.extKindMask != 0 { plan.allowedKinds &= atom.extKindMask }
+                case .noExtension: plan.allowedKinds &= ~(1 << 1)
                 case .kind: plan.allowedKinds &= 1 << atom.lower
                 case .filesOnly: plan.allowedKinds &= ~(1 << 1)
                 case .foldersOnly: plan.allowedKinds &= 1 << 1
@@ -732,6 +734,8 @@ public enum Searcher {
             if atom.extKindMask != 0 && atom.extKindMask & (1 << store.kind[i]) == 0 {
                 return AtomMatch(matched: false, baseScore: 0, needleLength: 0)
             }
+        case .noExtension:
+            if store.kind[i] == 1 { return AtomMatch(matched: false, baseScore: 0, needleLength: 0) }
         case .path:
             if let mask = atom.pathMask { return AtomMatch(matched: mask[i] != 0, baseScore: 0, needleLength: 0) }
         case .kind: return AtomMatch(matched: store.kind[i] == UInt8(atom.lower), baseScore: 0, needleLength: 0)
@@ -799,6 +803,9 @@ public enum Searcher {
             let key = Classifier.extensionKey(name)
             for j in 0..<atom.extCount { if atom.extKeys![j] == key { return AtomMatch(matched: true, baseScore: 0, needleLength: 0) } }
             return AtomMatch(matched: false, baseScore: 0, needleLength: 0)
+        case .noExtension:
+            let dot = name.lastIndex(of: 46)
+            return AtomMatch(matched: dot == nil || dot == 0 || dot == name.count - 1, baseScore: 0, needleLength: 0)
         case .kind: return AtomMatch(matched: store.kind[i] == UInt8(atom.lower), baseScore: 0, needleLength: 0)
         case .filesOnly: return AtomMatch(matched: store.kind[i] != 1, baseScore: 0, needleLength: 0)
         case .foldersOnly: return AtomMatch(matched: store.kind[i] == 1, baseScore: 0, needleLength: 0)
