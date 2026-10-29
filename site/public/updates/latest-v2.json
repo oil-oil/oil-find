@@ -1,17 +1,21 @@
 {
-  "version": "1.8.1",
-  "build": 20,
-  "url": "https://find.oiloil.org/downloads/Oil-Find-1.8.1.zip",
-  "size": 2755863,
-  "sha256": "0b2f6e6e4aa553f93243448f31ea5d8021cd7f9c9ef63c41e5d8f4aa5b0b28bb",
+  "version": "1.8.2",
+  "build": 22,
+  "url": "https://find.oiloil.org/downloads/Oil-Find-1.8.2.zip",
+  "size": 2841467,
+  "sha256": "3f903272380f258d5e302f93d3ac6d6e0335aaec44f5f6fd534d75bdaad52488",
   "minimumSystemVersion": "14.0",
-  "published": "2026-10-25",
+  "published": "2026-10-29",
   "notes": {
     "zh": [
-      "修复搜索结果在后台刷新时偶尔跳回顶部的问题。相同查询重试、文件索引更新和内容结果合并期间，都会保留滚动位置和选中项。"
+      "改善图片文字识别，补识别长图和大图里的小字，优化 Eagle 图库原图与预览的处理。",
+      "大型图库改用磁盘内容索引，降低常驻内存；后台识别按 CPU 消耗限速，修复进程回收偶尔卡住的问题。",
+      "新增识别进度、失败重试和接通电源时的加速选项，已完成的图片可以立即搜索。"
     ],
     "en": [
-      "Fixed an issue where search results could occasionally jump back to the top during background refreshes. Retries of the same query, file index updates, and content result merges now preserve your scroll position and selection."
+      "Improved recognition of small text in long and large images, with better handling of Eagle originals and previews.",
+      "Moved large image libraries to a disk-backed content index to reduce resident memory. Background recognition now follows a CPU budget and no longer stalls during worker recycling.",
+      "Added recognition progress, retrying unfinished images, and an optional faster mode while plugged in. Completed images are searchable immediately."
     ]
   }
 }
