@@ -10,7 +10,7 @@ import tempfile
 import time
 
 
-def check_launch(package):
+def check_launch(package, developer_id=False):
     if subprocess.run(["/usr/bin/pgrep", "-x", "OilFind"], capture_output=True).returncode == 0:
         raise RuntimeError("Quit the running Oil Find before checking the packaged launch.")
     with tempfile.TemporaryDirectory(prefix="oilfind-launch-") as temporary:
@@ -22,6 +22,9 @@ def check_launch(package):
             subprocess.run(["/usr/bin/ditto", "-x", "-k", str(package), str(root)], check=True)
             app = root / "Oil Find.app"
         subprocess.run(["/usr/bin/codesign", "--verify", "--deep", "--strict", str(app)], check=True)
+        if developer_id:
+            subprocess.run(["/usr/bin/xcrun", "stapler", "validate", str(app)], check=True)
+            subprocess.run(["/usr/sbin/spctl", "-a", "-vv", "-t", "exec", str(app)], check=True)
         with (app / "Contents/Info.plist").open("rb") as source:
             info = plistlib.load(source)
         workspace = root / ".oilfind-update-launch-check"
@@ -76,9 +79,9 @@ def check_launch(package):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        sys.exit("Usage: python3 Tests/Scripts/test_packaged_launch.py <app-or-zip>")
+    if len(sys.argv) not in (2, 3) or (len(sys.argv) == 3 and sys.argv[1] != "--developer-id"):
+        sys.exit("Usage: python3 Tests/Scripts/test_packaged_launch.py [--developer-id] <app-or-zip>")
     try:
-        check_launch(Path(sys.argv[1]).resolve(strict=True))
+        check_launch(Path(sys.argv[-1]).resolve(strict=True), developer_id=len(sys.argv) == 3)
     except (OSError, RuntimeError, subprocess.CalledProcessError) as error:
         sys.exit(str(error))

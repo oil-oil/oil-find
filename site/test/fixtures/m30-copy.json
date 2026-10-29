@@ -8,6 +8,14 @@
       "title": "Oil Find Pro: search inside images and documents on Mac",
       "description": "Search the text in screenshots, photos, PDFs and Office documents, all on your Mac, and keep unplugged drives searchable. $9.99 once, 7-day trial."
     },
+    "/privacy": {
+      "title": "隐私政策 · Oil Find",
+      "description": "Oil Find 隐私政策：Mac App Store 版与直售版的本地索引、AI 会话、购买、授权、更新和网站数据处理说明。"
+    },
+    "/en/privacy": {
+      "title": "Privacy Policy · Oil Find",
+      "description": "How Oil Find handles local indexing, AI conversations, purchases, licensing, updates, and website data in the Mac App Store and direct-sale versions."
+    },
     "/syntax": {
       "title": "Oil Find 搜索语法：通配符、正则、拼音和筛选条件",
       "description": "Oil Find 支持的全部搜索写法：同时包含、或、排除、通配符、正则，按扩展名、类型、大小、修改时间和路径筛选，以及键盘快捷键。"

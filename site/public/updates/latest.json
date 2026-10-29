@@ -1,17 +1,17 @@
 {
-  "version": "1.7.1",
-  "build": 16,
-  "url": "https://find.oiloil.org/downloads/Oil-Find-1.7.1.zip",
-  "size": 2732116,
-  "sha256": "6287c45b727163080f5a9d9395db910e0d1930b5c2da854a1b479b074cbd9f9b",
+  "version": "1.7.2",
+  "build": 17,
+  "url": "https://find.oiloil.org/downloads/Oil-Find-1.7.2.zip",
+  "size": 2733154,
+  "sha256": "e6ce2fcfff62a2911eda566eed9a5726df323d5050a9a63a5ef0cbd52a4cf748",
   "minimumSystemVersion": "14.0",
-  "published": "2026-10-17",
+  "published": "2026-10-25",
   "notes": {
     "zh": [
-      "修复了 1.7.0 在部分电脑上启动直接退出、自动更新失败的问题。AI 话题图标现在会从安装包内正确读取；即使缺少图标，也不会导致应用崩溃。"
+      "为自动更新迁移做准备：此桥接版本之后会通过新的更新通道提供经过 Apple 公证的版本。"
     ],
     "en": [
-      "Fixed an issue in 1.7.0 where Oil Find would quit unexpectedly on launch and cause automatic updates to fail on some Macs. AI conversation icons now load correctly from within the app bundle, and missing icons will no longer crash the app."
+      "Prepares automatic updates for signing migration: this bridge release moves the update channel to notarized releases."
     ]
   }
 }

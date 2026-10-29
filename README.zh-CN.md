@@ -100,7 +100,7 @@ Pro 和免费版是同一个安装包：
 ## 安装
 
 1. 从 [Releases](https://github.com/oil-oil/oil-find/releases/latest) 下载 `Oil-Find.zip`，解压后把 Oil Find 拖进「应用程序」。
-2. 第一次打开时，macOS 会拦下来，因为它没有经过 Apple 公证。到「系统设置 → 隐私与安全性」，在页面下方点「仍要打开」。
+2. 直接打开即可。正式安装包已使用 Developer ID 签名并通过 Apple 公证。签名身份已更换，macOS 可能会要求重新授予完全磁盘访问权限。
 3. 按 ⇧⌘F 开始搜索。
 4. 可选：授予「完全磁盘访问权限」后，邮件附件和其他应用的数据也能搜到。不授予也能正常使用。
 

@@ -1,4 +1,4 @@
-import updateManifest from '@/public/updates/latest.json';
+import updateManifest from '@/public/updates/latest-v2.json';
 
 export type Language = 'zh' | 'en';
 
@@ -87,7 +87,7 @@ export const dict: Record<Language, LandingCopy> = {
     'syn.sub': '点一行，把它填进上面的搜索框。',
     'source.download': '下载 macOS 版',
     'source.github': '在 GitHub 上查看',
-    'note.open.h': '第一次打开', 'note.open': '应用还没有经过苹果公证。双击后如果被拦下，去「系统设置 → 隐私与安全性」，在底部点「仍要打开」。只需要一次。',
+    'note.open.h': '第一次打开', 'note.open': '应用已使用 Developer ID 签名并通过 Apple 公证，下载后可直接打开。签名身份已更换，macOS 可能会要求重新授予完全磁盘访问权限。',
     'note.opensource.h': '开源', 'note.opensource': '免费版的代码在 GitHub 上，MIT 许可证，欢迎提问题和改进。Pro 功能不开源。',
     'note.fda.h': '完全磁盘访问', 'note.fda': '可选。不开也能用，只是搜不到邮件和其他应用的数据。',
     'note.privacy.h': '隐私', 'note.privacy': '文件搜索只索引文件名，不读取文件正文。启用 AI 话题搜索后，Oil Find 会读取所选来源保存在本机的对话标题与正文，并在本机建立索引，不会上传。Pro 版的图片识别和文档读取也都在本机完成。应用每天自动检查一次更新，只读取版本信息。',
@@ -139,7 +139,7 @@ export const dict: Record<Language, LandingCopy> = {
     'syn.sub': 'Click a row to try it in the search field above.',
     'source.download': 'Download for macOS',
     'source.github': 'View on GitHub',
-    'note.open.h': 'Opening it the first time', 'note.open': 'The app isn’t notarized by Apple yet. If macOS blocks it, go to System Settings → Privacy & Security and click “Open Anyway” at the bottom. Once is enough.',
+    'note.open.h': 'Opening it the first time', 'note.open': 'Oil Find is signed with Developer ID and notarized by Apple, so you can open it directly after downloading. Because the signing identity changed, macOS may ask you to grant Full Disk Access again.',
     'note.opensource.h': 'Open source', 'note.opensource': 'The free version’s code is on GitHub under the MIT license. Issues and pull requests are welcome. Pro features are not open source.',
     'note.fda.h': 'Full Disk Access', 'note.fda': 'Optional. Without it, Mail and other apps’ data can’t be searched.',
     'note.privacy.h': 'Privacy', 'note.privacy': 'File search indexes names without reading file contents. When AI Topics is enabled, Oil Find reads titles and body text saved locally by your chosen sources and builds the index on your Mac. Nothing is uploaded. Pro image and document processing also stays on your Mac. Daily update checks only read version info.',
@@ -175,7 +175,7 @@ export const dict: Record<Language, LandingCopy> = {
   },
 };
 
-export type SitePage = 'home' | 'activated' | 'recover' | 'changelog' | 'pro' | 'syntax' | 'everything-for-mac';
+export type SitePage = 'home' | 'activated' | 'recover' | 'changelog' | 'pro' | 'syntax' | 'everything-for-mac' | 'privacy';
 export function pagePath(lang: Language, page: SitePage = 'home'): string {
   const prefix = lang === 'en' ? '/en' : '';
   return page === 'home' ? prefix || '/' : prefix + '/' + page;

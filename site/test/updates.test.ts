@@ -29,8 +29,8 @@ describe('updates and release notes', () => {
     expect(changelogTitle).toEqual({ zh: '更新日志', en: 'Changelog' });
   });
 
-  it('keeps the public update manifest aligned with its published release, including before packaging the next release', () => {
-    const manifest = JSON.parse(readFileSync(new URL('../public/updates/latest.json', import.meta.url), 'utf8'));
+  it.each(['latest-v2.json', 'latest.json'])('keeps %s aligned with its published release, including before packaging the next release', feed => {
+    const manifest = JSON.parse(readFileSync(new URL(`../public/updates/${feed}`, import.meta.url), 'utf8'));
     const published = releases.find(release => release.version === manifest.version)!;
     expect(manifest).toMatchObject({
       version: published.version,
@@ -40,6 +40,18 @@ describe('updates and release notes', () => {
     });
     expect(manifest.size).toBeGreaterThan(0);
     expect(manifest.sha256).toMatch(/^[a-f0-9]{64}$/);
+  });
+
+  it('keeps both update feeds uncached', async () => {
+    const configURL = new URL('../next.config.mjs', import.meta.url).href;
+    const { default: config } = await import(configURL);
+    const rules = await config.headers();
+    for (const feed of ['latest-v2.json', 'latest.json']) {
+      expect(rules).toContainEqual({
+        source: `/updates/${feed}`,
+        headers: [{ key: 'Cache-Control', value: 'no-cache' }],
+      });
+    }
   });
 
   it.skipIf(process.platform !== 'darwin')('generates a matching manifest and refuses a release without notes', () => {

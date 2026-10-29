@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { API_METHODS, errorResponse } from './lib/http';
 import { chineseRegions, crawlerAgent, LANGUAGE_COOKIE, preferredLanguage } from './lib/language';
 
-const publicPaths = new Set(['/', '/pro', '/changelog', '/syntax', '/everything-for-mac']);
+const publicPaths = new Set(['/', '/pro', '/changelog', '/syntax', '/everything-for-mac', '/privacy']);
 
 export function proxy(request: NextRequest): Response {
   const path = request.nextUrl.pathname.replace(/\/$/, '') || '/';
@@ -31,4 +31,4 @@ export function proxy(request: NextRequest): Response {
   result.headers.set('Cache-Control', 'private, no-store');
   return result;
 }
-export const config = { matcher: ['/api/:path*', '/', '/pro', '/changelog', '/syntax', '/everything-for-mac'] };
+export const config = { matcher: ['/api/:path*', '/', '/pro', '/changelog', '/syntax', '/everything-for-mac', '/privacy'] };

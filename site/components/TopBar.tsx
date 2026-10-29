@@ -7,7 +7,7 @@ export function TopBar({ lang, page = 'home' }: { lang: Language; page?: SitePag
   return <header className="bar">
     <a className="brand" href={pagePath(lang)}><Image src="/assets/icon.png" alt="" width={26} height={26} unoptimized />{commonCopy.brand}</a>
     <a className="nav" href={pagePath(lang, 'pro')}>{proCopy[lang].nav}</a>
-    {(page === 'pro' || page === 'syntax' || page === 'everything-for-mac') && <LanguageLink lang={lang} page={page} />}
+    {(page === 'pro' || page === 'syntax' || page === 'everything-for-mac' || page === 'privacy') && <LanguageLink lang={lang} page={page} />}
     {page === 'home' && <>
       <a className="nav hide-s" href="#speed">{t['nav.speed']}</a>
       <a className="nav hide-s" href="#syntax">{t['nav.syntax']}</a>

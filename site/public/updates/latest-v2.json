@@ -1,0 +1,17 @@
+{
+  "version": "1.8.1",
+  "build": 20,
+  "url": "https://find.oiloil.org/downloads/Oil-Find-1.8.1.zip",
+  "size": 2755863,
+  "sha256": "0b2f6e6e4aa553f93243448f31ea5d8021cd7f9c9ef63c41e5d8f4aa5b0b28bb",
+  "minimumSystemVersion": "14.0",
+  "published": "2026-10-25",
+  "notes": {
+    "zh": [
+      "修复搜索结果在后台刷新时偶尔跳回顶部的问题。相同查询重试、文件索引更新和内容结果合并期间，都会保留滚动位置和选中项。"
+    ],
+    "en": [
+      "Fixed an issue where search results could occasionally jump back to the top during background refreshes. Retries of the same query, file index updates, and content result merges now preserve your scroll position and selection."
+    ]
+  }
+}

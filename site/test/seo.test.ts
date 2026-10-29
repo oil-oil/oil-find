@@ -26,6 +26,8 @@ import { metadata as zhSyntax } from '@/app/(zh)/syntax/page';
 import { metadata as enSyntax } from '@/app/en/syntax/page';
 import { metadata as zhEverything } from '@/app/(zh)/everything-for-mac/page';
 import { metadata as enEverything } from '@/app/en/everything-for-mac/page';
+import { metadata as zhPrivacy } from '@/app/(zh)/privacy/page';
+import { metadata as enPrivacy } from '@/app/en/privacy/page';
 const specification = { ...previousSpecification, metadata: { ...previousSpecification.metadata, ...currentSpecification.metadata } };
 
 // Verbatim metadata follows M24, document-search updates and M30.
@@ -35,6 +37,7 @@ const pages = [
   ['/syntax', zhSyntax, 'zh', 'syntax'], ['/en/syntax', enSyntax, 'en', 'syntax'],
   ['/everything-for-mac', zhEverything, 'zh', 'everything-for-mac'], ['/en/everything-for-mac', enEverything, 'en', 'everything-for-mac'],
   ['/changelog', zhChangelog, 'zh', 'changelog'], ['/en/changelog', enChangelog, 'en', 'changelog'],
+  ['/privacy', zhPrivacy, 'zh', 'privacy'], ['/en/privacy', enPrivacy, 'en', 'privacy'],
 ] as const;
 
 it.each(pages)('provides the specified metadata through the route entry (%s)', (path, metadata, lang, page) => {

@@ -100,7 +100,7 @@ Buy it or read more at [find.oiloil.org/en/pro](https://find.oiloil.org/en/pro).
 ## Install
 
 1. Download `Oil-Find.zip` from [Releases](https://github.com/oil-oil/oil-find/releases/latest), unzip it and drag Oil Find into Applications.
-2. The first time you open it, macOS blocks it because it isn't notarized by Apple. Go to System Settings → Privacy & Security and click Open Anyway near the bottom.
+2. Open Oil Find normally. Releases are signed with Developer ID and notarized by Apple. Because the signing identity changed, macOS may ask you to grant Full Disk Access again.
 3. Press ⇧⌘F and start typing.
 4. Optional: grant Full Disk Access to also search mail attachments and other apps' data. Oil Find works fine without it.
 

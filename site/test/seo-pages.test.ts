@@ -4,11 +4,13 @@ import { readFileSync } from 'node:fs';
 import { expect, it } from 'vitest';
 import { SearchSyntax } from '@/components/SearchSyntax';
 import { EverythingForMac } from '@/components/EverythingForMac';
+import { Privacy } from '@/components/Privacy';
 import { SiteFooter } from '@/components/SiteFooter';
 import { SearchProvider } from '@/components/SearchContext';
 import { SyntaxSheet } from '@/components/SyntaxSheet';
 import { dict, footerQuestions, pagePath } from '@/content/dict';
 import { keyboardRows, referenceCopy, syntaxRows } from '@/content/search-reference';
+import { PRIVACY_CONTACT_URL, PRIVACY_UPDATED_AT, privacyCopy } from '@/content/privacy';
 import specification from './fixtures/m30-copy.json';
 
 it.each(['zh', 'en'] as const)('renders complete M30 content and matching FAQ data (%s)', lang => {
@@ -35,9 +37,22 @@ it.each(['zh', 'en'] as const)('uses semantic syntax and keyboard tables and the
   for (const { queries } of syntaxRows(lang)) for (const query of queries) expect(html).toContain(`aria-label="${referenceCopy[lang].copy}: ${query.replace(/>/g, '&gt;')}"`);
 });
 
+it.each(['zh', 'en'] as const)('renders the complete channel-specific privacy policy and language link (%s)', lang => {
+  const t = privacyCopy[lang];
+  const html = renderToStaticMarkup(createElement(Privacy, { lang }));
+  const texts = [t.title, t.updated, t.introduction,
+    ...t.sections.flatMap(section => [section.title, ...section.paragraphs, ...(section.items ?? [])]),
+    t.contact.title, t.contact.body, t.contact.note, t.contact.action];
+  for (const text of texts) expect(html).toContain(renderToStaticMarkup(createElement('span', null, text)).slice(6, -7));
+  expect(html).toContain(`<time dateTime="${PRIVACY_UPDATED_AT}">`);
+  expect(html).toContain(`href="${PRIVACY_CONTACT_URL}"`);
+  expect(html).toContain(`href="${pagePath(lang === 'zh' ? 'en' : 'zh', 'privacy')}"`);
+  expect(html.match(/<section>/g)).toHaveLength(t.sections.length + 1);
+});
+
 it.each(['zh', 'en'] as const)('adds internal discovery links and the analytics notice (%s)', lang => {
   const footer = renderToStaticMarkup(createElement(SiteFooter, { lang }));
-  for (const page of ['syntax', 'everything-for-mac'] as const) expect(footer).toContain(`href="${pagePath(lang, page)}"`);
+  for (const page of ['syntax', 'everything-for-mac', 'privacy'] as const) expect(footer).toContain(`href="${pagePath(lang, page)}"`);
   expect(footer).toContain(referenceCopy[lang].analytics);
   const sheet = renderToStaticMarkup(createElement(SearchProvider, null, createElement(SyntaxSheet, { lang })));
   expect(sheet).toContain(`href="${pagePath(lang, 'syntax')}"`);

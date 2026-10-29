@@ -13,9 +13,24 @@ final class SearchPresentation {
     private var additionalElapsedMs: Double = 0
     private let submittedQuery: Query
     let createdAt: Date
-    init(_ result: SearchResult) { single = result; multiple = nil; submittedQuery = result.query; createdAt = result.createdAt }
-    init(_ result: MultiSearchResult) { single = nil; multiple = result; submittedQuery = result.query; createdAt = result.createdAt }
-    init(query: Query) { single = nil; multiple = nil; submittedQuery = query; createdAt = Date() }
+    private let searchOptions: SearchOptions?
+    private let additionalOnly: Bool
+    init(_ result: SearchResult) {
+        single = result; multiple = nil; submittedQuery = result.query; createdAt = result.createdAt
+        searchOptions = result.options; additionalOnly = false
+    }
+    init(_ result: MultiSearchResult) {
+        single = nil; multiple = result; submittedQuery = result.query; createdAt = result.createdAt
+        searchOptions = result.results.first?.options; additionalOnly = false
+    }
+    init(query: Query, options: SearchOptions? = nil, additionalOnly: Bool = true) {
+        single = nil; multiple = nil; submittedQuery = query; createdAt = Date()
+        searchOptions = options; self.additionalOnly = additionalOnly
+    }
+    func matchesSearch(query: Query, options: SearchOptions, additionalOnly: Bool) -> Bool {
+        guard submittedQuery.raw == query.raw, self.additionalOnly == additionalOnly, let previous = searchOptions else { return false }
+        return previous.kind == options.kind && previous.sort == options.sort && previous.ascending == options.ascending && previous.pinyin == options.pinyin
+    }
     var query: Query { submittedQuery }
     private var fileCount: Int { supplementedRows?.count ?? single?.items.count ?? multiple?.items.count ?? 0 }
     var total: Int { (supplementedRows?.count ?? single?.total ?? multiple?.total ?? 0) + additionalItems.count }
@@ -47,7 +62,7 @@ final class SearchPresentation {
         return mixedRows?.firstIndex(of: -i - 1)
     }
     private func copyFiles() -> SearchPresentation {
-        let result = single.map(SearchPresentation.init) ?? multiple.map(SearchPresentation.init) ?? SearchPresentation(query: query)
+        let result = single.map(SearchPresentation.init) ?? multiple.map(SearchPresentation.init) ?? SearchPresentation(query: query, options: searchOptions, additionalOnly: additionalOnly)
         result.supplementedRows = supplementedRows; result.details = details
         return result
     }
@@ -156,8 +171,8 @@ final class SearchPresentation {
     }
     var hasSupplements: Bool { supplementedRows != nil }
     func withoutSupplements() -> SearchPresentation {
-        let base = single.map(SearchPresentation.init) ?? multiple.map(SearchPresentation.init) ?? SearchPresentation(query: query)
-        return base.including(additionalItems, options: single?.options ?? multiple?.results.first?.options ?? SearchOptions())
+        let base = single.map(SearchPresentation.init) ?? multiple.map(SearchPresentation.init) ?? SearchPresentation(query: query, options: searchOptions, additionalOnly: additionalOnly)
+        return base.including(additionalItems, options: searchOptions ?? SearchOptions())
     }
     func index(sourceID: String, store: IndexStore, id: UInt32, path: String) -> Int? {
         guard let source = sources.first(where: { $0.id == sourceID }) else { return nil }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { demoFiles, match, parse } from '@/content/demo';
 import { dict, GITHUB_URL, type Language } from '@/content/dict';
-import manifest from '@/public/updates/latest.json';
+import manifest from '@/public/updates/latest-v2.json';
 
 function names(lang: Language, query: string) {
   const parsed = parse(query);

@@ -12,7 +12,7 @@ function request(path: string, language = 'en-US,en;q=0.9', region?: string, age
 }
 
 describe('visitor language routing', () => {
-  it.each(['/', '/pro', '/changelog', '/syntax', '/everything-for-mac'])('redirects only eligible unprefixed pages (%s)', path => {
+  it.each(['/', '/pro', '/changelog', '/syntax', '/everything-for-mac', '/privacy'])('redirects only eligible unprefixed pages (%s)', path => {
     expect(unstable_doesMiddlewareMatch({ config, nextConfig: {}, url: path })).toBe(true);
     const response = request(path + '?q=readme');
     expect(response.status).toBe(307);
@@ -31,7 +31,7 @@ describe('visitor language routing', () => {
       expect(request('/', language, region).status).toBe(200);
     }
   });
-  it.each(['/', '/pro', '/changelog', '/syntax', '/everything-for-mac'])('leaves normal page cache and Vary headers to Next/Vercel (%s)', path => {
+  it.each(['/', '/pro', '/changelog', '/syntax', '/everything-for-mac', '/privacy'])('leaves normal page cache and Vary headers to Next/Vercel (%s)', path => {
     for (const response of [
       request(path, 'zh-CN', 'US'),
       request(path, 'en-US', 'CN'),
@@ -56,7 +56,7 @@ describe('visitor language routing', () => {
   it.each(['zh', 'en'])('respects either saved manual choice (%s)', cookie => {
     expect(request('/', 'en-US', 'US', undefined, cookie).status).toBe(200);
   });
-  it.each(['/en', '/en/pro', '/en/syntax', '/en/everything-for-mac', '/activated', '/recover', '/en/recover', '/sitemap.xml', '/robots.txt', '/assets/icon.png', '/downloads/Oil-Find.zip', '/_next/static/test.js', '/pro/unknown'])('does not process excluded paths (%s)', path => {
+  it.each(['/en', '/en/pro', '/en/syntax', '/en/everything-for-mac', '/en/privacy', '/activated', '/recover', '/en/recover', '/sitemap.xml', '/robots.txt', '/assets/icon.png', '/downloads/Oil-Find.zip', '/_next/static/test.js', '/pro/unknown'])('does not process excluded paths (%s)', path => {
     expect(unstable_doesMiddlewareMatch({ config, nextConfig: {}, url: path })).toBe(false);
     expect(request(path).headers.get('Location')).toBeNull();
   });
