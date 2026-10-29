@@ -4,6 +4,7 @@ const config = {
     return [
       { source: '/downloads/:path*', headers: [{ key: 'Cache-Control', value: 'public, max-age=300' }] },
       { source: '/updates/latest.json', headers: [{ key: 'Cache-Control', value: 'no-cache' }] },
+      { source: '/updates/latest-v2.json', headers: [{ key: 'Cache-Control', value: 'no-cache' }] },
     ];
   },
 };

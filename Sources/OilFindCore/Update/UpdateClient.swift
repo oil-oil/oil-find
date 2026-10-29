@@ -1,7 +1,7 @@
 import Foundation
 
 public final class UpdateClient {
-    public static let latestURL = URL(string: "https://find.oiloil.org/updates/latest.json")!
+    public static let latestURL = URL(string: "https://find.oiloil.org/updates/latest-v2.json")!
     private let manifestURL: URL
     private let version: String
     private let allowLocalhost: Bool

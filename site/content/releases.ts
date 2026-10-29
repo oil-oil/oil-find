@@ -9,6 +9,60 @@ export const changelogTitle = { zh: '更新日志', en: 'Changelog' };
 // The single source for the website and the packaged update manifest.
 export const releases: Release[] = [
   {
+    "version": "1.8.2",
+    "date": "2026-10-29",
+    "notes": {
+      "zh": [
+        "改善图片文字识别，补识别长图和大图里的小字，优化 Eagle 图库原图与预览的处理。",
+        "大型图库改用磁盘内容索引，降低常驻内存；后台识别按 CPU 消耗限速，修复进程回收偶尔卡住的问题。",
+        "新增识别进度、失败重试和接通电源时的加速选项，已完成的图片可以立即搜索。"
+      ],
+      "en": [
+        "Improved recognition of small text in long and large images, with better handling of Eagle originals and previews.",
+        "Moved large image libraries to a disk-backed content index to reduce resident memory. Background recognition now follows a CPU budget and no longer stalls during worker recycling.",
+        "Added recognition progress, retrying unfinished images, and an optional faster mode while plugged in. Completed images are searchable immediately."
+      ]
+    }
+  },
+  {
+    "version": "1.8.1",
+    "date": "2026-10-25",
+    "notes": {
+      "zh": [
+        "修复搜索结果在后台刷新时偶尔跳回顶部的问题。相同查询重试、文件索引更新和内容结果合并期间，都会保留滚动位置和选中项。"
+      ],
+      "en": [
+        "Fixed an issue where search results could occasionally jump back to the top during background refreshes. Retries of the same query, file index updates, and content result merges now preserve your scroll position and selection."
+      ]
+    }
+  },
+  {
+    "version": "1.7.3",
+    "date": "2026-10-25",
+    "notes": {
+      "zh": [
+        "应用现已使用 Developer ID 签名并通过 Apple 公证，首次打开不再需要绕过 Gatekeeper。免费功能、Pro 试用和现有授权均保留。",
+        "签名身份已更换，macOS 可能要求重新授予完全磁盘访问权限。旧版会先通过桥接版本自动更新，无需手动下载。"
+      ],
+      "en": [
+        "Oil Find is now signed with Developer ID and notarized by Apple, so Gatekeeper no longer needs to be bypassed on first launch. Free features, the Pro trial, and existing licenses are preserved.",
+        "The signing identity has changed, so macOS may ask you to grant Full Disk Access again. Older versions migrate through a bridge release automatically, with no manual download required."
+      ]
+    }
+  },
+  {
+    "version": "1.7.2",
+    "date": "2026-10-25",
+    "notes": {
+      "zh": [
+        "为自动更新迁移做准备：此桥接版本之后会通过新的更新通道提供经过 Apple 公证的版本。"
+      ],
+      "en": [
+        "Prepares automatic updates for signing migration: this bridge release moves the update channel to notarized releases."
+      ]
+    }
+  },
+  {
     "version": "1.7.1",
     "date": "2026-10-17",
     "notes": {

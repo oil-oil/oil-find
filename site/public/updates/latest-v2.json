@@ -1,0 +1,21 @@
+{
+  "version": "1.8.2",
+  "build": 22,
+  "url": "https://find.oiloil.org/downloads/Oil-Find-1.8.2.zip",
+  "size": 2841467,
+  "sha256": "3f903272380f258d5e302f93d3ac6d6e0335aaec44f5f6fd534d75bdaad52488",
+  "minimumSystemVersion": "14.0",
+  "published": "2026-10-29",
+  "notes": {
+    "zh": [
+      "改善图片文字识别，补识别长图和大图里的小字，优化 Eagle 图库原图与预览的处理。",
+      "大型图库改用磁盘内容索引，降低常驻内存；后台识别按 CPU 消耗限速，修复进程回收偶尔卡住的问题。",
+      "新增识别进度、失败重试和接通电源时的加速选项，已完成的图片可以立即搜索。"
+    ],
+    "en": [
+      "Improved recognition of small text in long and large images, with better handling of Eagle originals and previews.",
+      "Moved large image libraries to a disk-backed content index to reduce resident memory. Background recognition now follows a CPU budget and no longer stalls during worker recycling.",
+      "Added recognition progress, retrying unfinished images, and an optional faster mode while plugged in. Completed images are searchable immediately."
+    ]
+  }
+}

@@ -262,15 +262,18 @@ final class SearchViewController: NSViewController, NSWindowDelegate, NSMenuDele
     private func search(refresh: Bool, preserveSelection: Bool) {
         supplementaryProvider?.userActivity(visible: view.window?.isVisible == true, typing: !refresh && !preserveSelection)
         let token = generation.next()
-        let sources = filters.additionalSelected ? [] : searchSources
+        let additionalOnly = filters.additionalSelected
+        let sources = additionalOnly ? [] : searchSources
         let store = sources.first?.store
         var options = filters.options
         if !snapshot { options.pinyin = UserDefaults.standard.bool(forKey: "pinyinEnabled") }
         let query = editingQuery(store: store), previous = results.result
+        // Retrying the displayed query is passive, even if an earlier request is still pending.
+        let preserveViewport = refresh || preserveSelection || previous?.matchesSearch(query: query, options: options, additionalOnly: additionalOnly) == true
         let cancelled = { [generation] in !generation.current(token) }
-        let supplementary = filters.additionalSelected ? nil : supplementaryProvider?.prepareSearch(query, options: options, sources: sources, isCancelled: cancelled)
+        let supplementary = additionalOnly ? nil : supplementaryProvider?.prepareSearch(query, options: options, sources: sources, isCancelled: cancelled)
         let additional = additionalSearchProvider.flatMap { provider in
-            provider.isEnabled && (filters.additionalSelected || options.kind == nil) ? provider.prepareSearch(query, isCancelled: cancelled) : nil
+            provider.isEnabled && (additionalOnly || options.kind == nil) ? provider.prepareSearch(query, isCancelled: cancelled) : nil
         }
         additionalSearchFailed = false
         additionalPending = additional != nil
@@ -302,7 +305,7 @@ final class SearchViewController: NSViewController, NSWindowDelegate, NSMenuDele
         queue.async { [weak self] in
             guard let self, self.generation.current(token) else { return }
             let found: SearchPresentation
-            if sources.isEmpty { found = SearchPresentation(query: query) }
+            if sources.isEmpty { found = SearchPresentation(query: query, options: options, additionalOnly: additionalOnly) }
             else if sources.count == 1 && sources[0].id == "startup", let store {
                 if !self.sourceCaches.isEmpty { self.sourceCaches.removeAll(); self.sourceCacheStores.removeAll() }
                 if previous?.single?.store !== store { self.cache.removeAll() }
@@ -333,8 +336,8 @@ final class SearchViewController: NSViewController, NSWindowDelegate, NSMenuDele
                     self.results.refresh(found)
                 } else {
                     self.pendingNewSearch = nil
-                    if preserveSelection, self.results.result != nil { self.results.refresh(found) }
-                    else { self.present(found, selection: row, resetScroll: !preserveSelection) }
+                    if preserveViewport, self.results.result != nil { self.results.refresh(found) }
+                    else { self.present(found, selection: row, resetScroll: !preserveViewport) }
                 }
             }
             if supplementary != nil || additional != nil {
@@ -351,7 +354,7 @@ final class SearchViewController: NSViewController, NSWindowDelegate, NSMenuDele
                             self.footer.warning = true; self.footer.text = self.additionalSearchProvider?.status ?? L10n.text("search.failed")
                             return
                         }
-                        if sources.isEmpty && !refresh && !preserveSelection { self.present(combined) }
+                        if sources.isEmpty && !preserveViewport { self.present(combined) }
                         else { self.results.refresh(combined) }
                         if additionalBox.failed { self.footer.warning = true; self.footer.text = L10n.text("search.failed") }
                     }
@@ -424,7 +427,7 @@ final class SearchViewController: NSViewController, NSWindowDelegate, NSMenuDele
             let query = Query.parse(searchField.text, store: store)
             let sources = additionalOnly ? [] : store.map { [SearchSource(id: "startup", displayName: "", isOnline: true, store: $0)] + additionalSources } ?? additionalSources
             let files: SearchPresentation
-            if sources.isEmpty { files = SearchPresentation(query: query) }
+            if sources.isEmpty { files = SearchPresentation(query: query, options: options, additionalOnly: additionalOnly) }
             else if let found = MultiSearcher.search(query, options: options, in: sources) {
                 let hits = supplementaryProvider?.prepareSearch(query, options: options, sources: sources, isCancelled: { false })() ?? []
                 files = hits.isEmpty ? SearchPresentation(found) : SearchPresentation(found).supplement(hits, options: options)

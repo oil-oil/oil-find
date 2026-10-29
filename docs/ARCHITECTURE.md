@@ -243,7 +243,7 @@ playground xcarchive dsym rtfd scptd lproj logicx band screenstudio pages number
 
 `SearchResult` 强引用它所来自的 store。全量重扫或压实后 `IndexManager` 换上新的 store 对象，界面收到通知后重新执行当前查询，旧 store 随旧结果一起释放。
 
-查询、类型与排序不变时，所有被动刷新保持精确像素偏移；滚动、惯性滚动和拖动期间合并并延迟刷新。选择通过缓存的文件身份保持，文件删除后落到原位置相邻行而不滚动；列表变短时保留足够的文档高度，避免被新底部钳制。仅键盘导航、新查询、类型和排序变化会主动滚动。面板打开或查询编辑后为输入状态，空格正常输入；键盘导航或鼠标选行后为浏览状态，默认按空格切换 Quick Look，⌘Y 始终可用。组字时按键交给输入法，预览中的方向键更换文件、Esc 只关闭预览。
+查询、类型与排序不变时，所有被动刷新保持精确像素偏移；被动重试按查询原文、分类和排序与当前结果快照比对，不因前序请求仍在途而重置视口。滚动、惯性滚动和拖动期间合并并延迟刷新。选择通过缓存的文件身份保持，文件删除后落到原位置相邻行而不滚动；列表变短时保留足够的文档高度，避免被新底部钳制。仅键盘导航、新查询、类型和排序变化会主动滚动。面板打开或查询编辑后为输入状态，空格正常输入；键盘导航或鼠标选行后为浏览状态，默认按空格切换 Quick Look，⌘Y 始终可用。组字时按键交给输入法，预览中的方向键更换文件、Esc 只关闭预览。
 
 ## 多来源与任意卷索引
 
@@ -277,13 +277,13 @@ playground xcarchive dsym rtfd scptd lproj logicx band screenstudio pages number
 
 ## 更新
 
-发布说明唯一来源为 `site/content/releases.ts`，版本倒序排列，官网 `/changelog` 与 `/en/changelog` 直接读取。`scripts/package.sh` 必须使用已有的「Oil Find Self-Signed」证书签名，从 zip 的实际大小、SHA-256 与当前发布说明生成 `site/public/updates/latest.json`；缺少说明或证书时失败。清单为静态 HTTPS 资源，`Cache-Control: no-cache`，zip 沿用下载目录缓存。应用不使用 Apple Developer ID、Sparkle 或第三方更新包。
+发布说明唯一来源为 `site/content/releases.ts`，版本倒序排列，官网 `/changelog` 与 `/en/changelog` 直接读取。更新清单由打包流程从 zip 的实际大小、SHA-256 与当前发布说明生成；缺少说明或对应签名身份时失败。旧 `latest.json` 只向旧客户端提供自签桥接版，桥接及后续版本使用 `latest-v2.json`。两份清单均为静态 HTTPS 资源，`Cache-Control: no-cache`，zip 沿用下载目录缓存。应用不使用 Sparkle 或第三方更新包。
 
 `OilFindCore/Update` 提供语义版本、清单、偏好、网络、安装与重启类型。版本遵守 SemVer，预发布版本低于正式版，忽略版本元数据；仅语义版本相同时比较 build。最低系统要求高于当前系统时不提示。`automaticUpdates` 默认为 true；启动 30 秒后检查一次，随后每 24 小时检查。`skippedUpdateVersion` 仅阻止该版本的自动提示，不影响手动检查。网络失败自动检查静默，手动检查报告原因。
 
-版本检查只有一个 GET 请求，使用临时 URLSession，禁用缓存、cookie 和凭证，不携带设备标识、语言或本机路径；User-Agent 为 `OilFind/<版本>`。正式应用清单地址固定为 `https://find.oiloil.org/updates/latest.json`，仅接受 HTTPS 下载与清单同一主机的 zip，不跟随重定向。调试版不执行更新检查；快照与临时目录端到端演练入口仅在 DEBUG 编译，正式版没有清单地址覆盖入口。
+版本检查只有一个 GET 请求，使用临时 URLSession，禁用缓存、cookie 和凭证，不携带设备标识、语言或本机路径；User-Agent 为 `OilFind/<版本>`。桥接及后续正式应用的清单地址固定为 `https://find.oiloil.org/updates/latest-v2.json`，旧版继续使用 `latest.json`；仅接受 HTTPS 下载与清单同一主机的 zip，不跟随重定向。调试版不执行更新检查；快照与临时目录端到端演练入口仅在 DEBUG 编译，正式版没有清单地址覆盖入口。
 
-用户确认安装后，URLSession 下载到临时目录并报告进度；流式校验大小与 SHA-256。在当前应用旁建立同卷、0700 权限的临时工作目录，检查压缩包路径与符号链接后用 `ditto -x -k` 解压。Security 从 `SecCodeCopySelf` 取得当前运行代码，再取得其 designated requirement；新包必须签名有效且满足该要求（同一 bundle id 与证书 leaf 哈希），Info.plist 的 bundle id 必须为 `com.oiloil.find`，版本高于当前并与清单一致。
+用户确认安装后，URLSession 下载到临时目录并报告进度；流式校验大小与 SHA-256。在当前应用旁建立同卷、0700 权限的临时工作目录，检查压缩包路径与符号链接后用 `ditto -x -k` 解压。Security 从 `SecCodeCopySelf` 取得当前运行代码，再取得其 designated requirement；新包必须签名有效且满足该要求，或满足固定为 bundle id `com.oiloil.find`、Team ID `4NZ3X494AF` 的 Apple Developer ID requirement。两条路径都使用严格、全架构与嵌套代码校验。Info.plist 的 bundle id 必须为 `com.oiloil.find`，版本高于当前并与清单一致。
 
 安装先记录收据，移动当前应用到工作目录的 `previous.app`，再把新应用移到原位置。第二次移动失败立即还原备份；如果还原本身发生文件系统错误，则保留备份，不删除工作目录。当前应用或所在目录不可写时停止，不尝试提权。文件操作与签名校验通过协议注入，所有校验发生在替换之前。
 
@@ -303,3 +303,5 @@ Oil Find 的公开核心与应用库使用 MIT 许可证，免费搜索始终可
 版本与 build 来自 `Resources/Info.plist`。`scripts/build-app.sh --debug` 打包的调试版提供 `--snapshot` 界面快照；正式版没有该入口。正式版在签名前移除包含本机源码路径的调试符号；调试版保留调试信息。`scripts/package.sh` 生成版本安装包、通用下载包与更新清单，不执行部署。
 
 应用资源包放在 `Contents/Resources`。AI 图标显式查找安装后的资源目录及 SwiftPM 运行目录，资源缺失时使用应用图标或系统图标；不调用可能回退到开发机绝对路径并触发 fatalError 的 `Bundle.module`。打包在生成更新清单前运行 `Tests/Scripts/test_packaged_launch.py`：从最终 zip 解压，禁止访问所有 `.build` 目录、真实用户目录、钥匙串服务及网络，强制开启 AI 来源，并检查新进程提交更新器的启动确认后仍存活。CI 同时检查免费正式应用的隔离启动。
+
+开发机已有运行实例时，可用 `OILFIND_ISOLATED_LAUNCH_CHECK=1 scripts/package.sh`：先验证原始安装包的签名、公证与 Gatekeeper，再为解压后的临时启动副本分配随机 bundle id 并临时签名。这样可验证正式资源布局与启动确认，同时保留用户当前实例。默认检查与 CI 使用安装包原始身份启动。

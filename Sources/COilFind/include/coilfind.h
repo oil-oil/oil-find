@@ -70,4 +70,12 @@ int sift_validate_index(const uint32_t *name_off, const uint32_t *parent,
                         uint32_t home_index, uint32_t deleted_count);
 uint64_t sift_resident_bytes(void);
 int sift_actual_name(const char *path, uint8_t *out, size_t capacity);
+/* Send exactly one descriptor in a one-byte AF_UNIX datagram. The caller retains
+   ownership of descriptor. Returns 0 on success or -1 with errno set; sending is
+   nonblocking and suppresses SIGPIPE on socket. */
+int sift_send_fd(int socket, int descriptor);
+/* Receive one descriptor from an AF_UNIX datagram. The function may block. On
+   success the caller owns a close-on-exec descriptor; on failure it returns -1
+   with errno set and closes any descriptors received in a rejected packet. */
+int sift_receive_fd(int socket);
 #endif
