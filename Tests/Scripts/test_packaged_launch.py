@@ -1,5 +1,6 @@
 """Launch a packaged app without access to developer resources or user data."""
 
+import argparse
 import json
 import os
 from pathlib import Path
@@ -8,10 +9,11 @@ import subprocess
 import sys
 import tempfile
 import time
+import uuid
 
 
-def check_launch(package, developer_id=False):
-    if subprocess.run(["/usr/bin/pgrep", "-x", "OilFind"], capture_output=True).returncode == 0:
+def check_launch(package, developer_id=False, isolated_instance=False):
+    if not isolated_instance and subprocess.run(["/usr/bin/pgrep", "-x", "OilFind"], capture_output=True).returncode == 0:
         raise RuntimeError("Quit the running Oil Find before checking the packaged launch.")
     with tempfile.TemporaryDirectory(prefix="oilfind-launch-") as temporary:
         root = Path(temporary).resolve()
@@ -27,6 +29,14 @@ def check_launch(package, developer_id=False):
             subprocess.run(["/usr/sbin/spctl", "-a", "-vv", "-t", "exec", str(app)], check=True)
         with (app / "Contents/Info.plist").open("rb") as source:
             info = plistlib.load(source)
+        if isolated_instance:
+            # Verify the shipped identity above, then give only this temporary
+            # launch copy its own identity so existing user instances can stay open.
+            info["CFBundleIdentifier"] = "com.oiloil.find.launch-check-" + uuid.uuid4().hex
+            with (app / "Contents/Info.plist").open("wb") as target:
+                plistlib.dump(info, target)
+            subprocess.run(["/usr/bin/codesign", "--force", "--sign", "-", "--options", "runtime",
+                            "--identifier", info["CFBundleIdentifier"], str(app)], check=True)
         workspace = root / ".oilfind-update-launch-check"
         workspace.mkdir()
         (workspace / "receipt.json").write_text(json.dumps({
@@ -63,6 +73,8 @@ def check_launch(package, developer_id=False):
                         elif time.monotonic() - confirmed_at >= 2:
                             print(f"Packaged launch passed: {info['CFBundleShortVersionString']} "
                                   f"(build {info['CFBundleVersion']}), isolated resources and launch acknowledgement.")
+                            if isolated_instance:
+                                print("Launch used a temporary test identity; the original package signature was verified separately.")
                             return
                     time.sleep(0.05)
                 log.seek(0)
@@ -79,9 +91,13 @@ def check_launch(package, developer_id=False):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) not in (2, 3) or (len(sys.argv) == 3 and sys.argv[1] != "--developer-id"):
-        sys.exit("Usage: python3 Tests/Scripts/test_packaged_launch.py [--developer-id] <app-or-zip>")
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--developer-id", action="store_true")
+    parser.add_argument("--isolated-instance", action="store_true")
+    parser.add_argument("package", type=Path)
+    args = parser.parse_args()
     try:
-        check_launch(Path(sys.argv[-1]).resolve(strict=True), developer_id=len(sys.argv) == 3)
+        check_launch(args.package.resolve(strict=True), developer_id=args.developer_id,
+                     isolated_instance=args.isolated_instance)
     except (OSError, RuntimeError, subprocess.CalledProcessError) as error:
         sys.exit(str(error))

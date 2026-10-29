@@ -303,3 +303,5 @@ Oil Find 的公开核心与应用库使用 MIT 许可证，免费搜索始终可
 版本与 build 来自 `Resources/Info.plist`。`scripts/build-app.sh --debug` 打包的调试版提供 `--snapshot` 界面快照；正式版没有该入口。正式版在签名前移除包含本机源码路径的调试符号；调试版保留调试信息。`scripts/package.sh` 生成版本安装包、通用下载包与更新清单，不执行部署。
 
 应用资源包放在 `Contents/Resources`。AI 图标显式查找安装后的资源目录及 SwiftPM 运行目录，资源缺失时使用应用图标或系统图标；不调用可能回退到开发机绝对路径并触发 fatalError 的 `Bundle.module`。打包在生成更新清单前运行 `Tests/Scripts/test_packaged_launch.py`：从最终 zip 解压，禁止访问所有 `.build` 目录、真实用户目录、钥匙串服务及网络，强制开启 AI 来源，并检查新进程提交更新器的启动确认后仍存活。CI 同时检查免费正式应用的隔离启动。
+
+开发机已有运行实例时，可用 `OILFIND_ISOLATED_LAUNCH_CHECK=1 scripts/package.sh`：先验证原始安装包的签名、公证与 Gatekeeper，再为解压后的临时启动副本分配随机 bundle id 并临时签名。这样可验证正式资源布局与启动确认，同时保留用户当前实例。默认检查与 CI 使用安装包原始身份启动。

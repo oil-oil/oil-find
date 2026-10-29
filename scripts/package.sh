@@ -109,12 +109,15 @@ PY
 fi
 
 ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "$ARCHIVE_PATH"
+LAUNCH_ARGUMENTS=("$ARCHIVE_PATH")
+if [[ "${OILFIND_ISOLATED_LAUNCH_CHECK:-0}" == 1 ]]; then
+    LAUNCH_ARGUMENTS=(--isolated-instance "${LAUNCH_ARGUMENTS[@]}")
+fi
 if [[ "$MODE" == developer-id ]]; then
     spctl -a -vv -t exec "$APP_PATH"
-    python3 Tests/Scripts/test_packaged_launch.py --developer-id "$ARCHIVE_PATH"
-else
-    python3 Tests/Scripts/test_packaged_launch.py "$ARCHIVE_PATH"
+    LAUNCH_ARGUMENTS=(--developer-id "${LAUNCH_ARGUMENTS[@]}")
 fi
+python3 Tests/Scripts/test_packaged_launch.py "${LAUNCH_ARGUMENTS[@]}"
 mkdir -p site/public/downloads site/public/updates
 node --experimental-strip-types scripts/generate-update-manifest.mjs Resources/Info.plist "$ARCHIVE_PATH" "$FEED_PATH"
 cp "$ARCHIVE_PATH" "site/public/downloads/Oil-Find-$VERSION.zip"
