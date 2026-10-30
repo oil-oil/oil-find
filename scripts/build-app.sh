@@ -18,6 +18,20 @@ if [[ "$CONFIGURATION" == release ]]; then
     strip -S "$APP_PATH/Contents/MacOS/OilFind"
 fi
 cp "Resources/Info.plist" "$APP_PATH/Contents/Info.plist"
+if [[ "$CONFIGURATION" == debug ]]; then
+    python3 - "$APP_PATH/Contents/Info.plist" <<'PY'
+import plistlib, sys
+path = sys.argv[1]
+with open(path, 'rb') as source:
+    info = plistlib.load(source)
+info['CFBundleIdentifier'] += '.debug'
+info['CFBundleName'] = 'Oil Find Debug'
+info['CFBundleDisplayName'] = 'Oil Find Debug'
+info.pop('CFBundleURLTypes', None)
+with open(path, 'wb') as target:
+    plistlib.dump(info, target)
+PY
+fi
 if [[ -f "Resources/AppIcon.icns" ]]; then
     cp "Resources/AppIcon.icns" "$APP_PATH/Contents/Resources/AppIcon.icns"
 fi
@@ -34,12 +48,17 @@ for target in package["targets"]:
         shutil.copytree(binary / name, resources / name)
 ' "$BINARY_DIR" "$APP_PATH/Contents/Resources"
 SELF_SIGNED="Oil Find Self-Signed"
-if [[ -n "${OILFIND_SIGN_IDENTITY:-}" ]]; then
+if [[ "$CONFIGURATION" == debug ]]; then
+    codesign --force --sign - --identifier com.oiloil.find.debug "$APP_PATH"
+elif [[ -n "${OILFIND_SIGN_IDENTITY:-}" ]]; then
     codesign --force --sign "$OILFIND_SIGN_IDENTITY" --identifier com.oiloil.find --options runtime --timestamp "$APP_PATH"
 elif security find-identity -v -p codesigning | grep -q "\"$SELF_SIGNED\""; then
     # Stable identity: macOS keeps Full Disk Access across updates. See scripts/create-signing-cert.sh.
     codesign --force --sign "$SELF_SIGNED" --identifier com.oiloil.find "$APP_PATH"
 else
     codesign --force --sign - --identifier com.oiloil.find "$APP_PATH"
+fi
+if [[ "$CONFIGURATION" == debug ]]; then
+    python3 Tests/Scripts/test_debug_launch.py "$APP_PATH"
 fi
 printf '%s\n' "$APP_PATH"

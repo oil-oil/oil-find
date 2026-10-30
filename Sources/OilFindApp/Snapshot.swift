@@ -34,9 +34,8 @@ enum Snapshot {
         guard let key = sorts[sort], let selection = Int(values["--select"] ?? "0"), selection >= 0 else { throw SnapshotError.failed("Invalid sort or selected row") }
         var store: IndexStore?
         if filter != "additional" && !state.hasPrefix("update-") && !["indexing", "welcome", "settings", "menu"].contains(state) || (state == "settings" && values["--db"] != nil) {
-            let fallback = NSHomeDirectory() + "/Library/Caches/Oil Find/cli-index.oilfind"
-            let defaultPath = FileManager.default.fileExists(atPath: AppDelegate.dbURL.path) ? AppDelegate.dbURL.path : fallback
-            let db = NSString(string: values["--db"] ?? defaultPath).expandingTildeInPath
+            guard let path = values["--db"], !path.isEmpty else { throw SnapshotError.failed("This snapshot requires --db with an explicit fixture index") }
+            let db = NSString(string: path).expandingTildeInPath
             guard let loaded = IndexStore.load(from: db) else { throw SnapshotError.failed("Cannot load index: \(db)") }
             store = loaded
         }
