@@ -14,25 +14,25 @@ public enum Presentation {
     }
 
     public static func highlightRanges(name: String, query: Query) -> [NSRange] {
-        var literals: [String] = []
+        var literals: [(text: String, caseSensitive: Bool)] = []
         for clause in query.clauses {
             for atom in clause.alternatives where !atom.negated {
                 switch atom.matcher {
-                case .name(let needle, _):
-                    literals.append(String(decoding: needle, as: UTF8.self))
+                case .name(let needle, let caseSensitive):
+                    literals.append((String(decoding: needle, as: UTF8.self), caseSensitive))
                 case .glob(let pattern, _):
                     literals += String(decoding: pattern, as: UTF8.self)
-                        .split(whereSeparator: { $0 == "*" || $0 == "?" }).map(String.init)
+                        .split(whereSeparator: { $0 == "*" || $0 == "?" }).map { (String($0), false) }
                 default: break
                 }
             }
         }
         let text = name as NSString
         var ranges: [NSRange] = []
-        for literal in literals where !literal.isEmpty {
+        for (literal, caseSensitive) in literals where !literal.isEmpty {
             var start = 0
             while start < text.length {
-                let range = text.range(of: literal, options: .caseInsensitive,
+                let range = text.range(of: literal, options: caseSensitive ? [] : .caseInsensitive,
                                        range: NSRange(location: start, length: text.length - start))
                 if range.location == NSNotFound { break }
                 ranges.append(range)
