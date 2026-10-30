@@ -302,6 +302,8 @@ Oil Find 的公开核心与应用库使用 MIT 许可证，免费搜索始终可
 
 版本与 build 来自 `Resources/Info.plist`。`scripts/build-app.sh --debug` 打包的调试版只允许 `--snapshot` 和显式受控测试入口，普通启动在创建索引或文件监控之前以状态 2 退出。需要文件结果的快照必须提供 `--db` 测试索引，不再默认读取真实用户索引。直接分发的 Debug 包使用独立的 `com.oiloil.find.debug` 身份、临时签名且不注册正式 URL scheme。Debug 打包和 CI 会在隔离用户目录、禁止真实用户目录、挂载目录、网络及 FSEvents 服务访问的子进程中验证启动拒绝和快照退出，测试超时会回收自身进程。正式版没有快照入口。正式版在签名前移除包含本机源码路径的调试符号；调试版保留调试信息。`scripts/package.sh` 生成版本安装包、通用下载包与更新清单，不执行部署。
 
+更新端到端演练使用系统临时目录内的独立副本。由于日常 Debug 包使用独立身份，演练 fixture 需要设回正式测试标识 `com.oiloil.find` 并重新签名，以检验更新器的正式身份约束；演练入口仍会核验应用与输出路径位于临时目录。
+
 应用资源包放在 `Contents/Resources`。AI 图标显式查找安装后的资源目录及 SwiftPM 运行目录，资源缺失时使用应用图标或系统图标；不调用可能回退到开发机绝对路径并触发 fatalError 的 `Bundle.module`。打包在生成更新清单前运行 `Tests/Scripts/test_packaged_launch.py`：从最终 zip 解压，禁止访问所有 `.build` 目录、真实用户目录、钥匙串服务及网络，强制开启 AI 来源，并检查新进程提交更新器的启动确认后仍存活。CI 同时检查免费正式应用的隔离启动。
 
 开发机已有运行实例时，可用 `OILFIND_ISOLATED_LAUNCH_CHECK=1 scripts/package.sh`：先验证原始安装包的签名、公证与 Gatekeeper，再为解压后的临时启动副本分配随机 bundle id 并临时签名。这样可验证正式资源布局与启动确认，同时保留用户当前实例。默认检查与 CI 使用安装包原始身份启动。
