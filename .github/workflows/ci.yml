@@ -7,7 +7,7 @@ permissions:
 
 jobs:
   build-and-test:
-    runs-on: macos-14
+    runs-on: macos-15
     env:
       CI: "true"
     steps:
@@ -19,6 +19,8 @@ jobs:
         run: swift --version
       - name: Build Swift app
         run: swift build
+      - name: Check Debug launch isolation
+        run: python3 Tests/Scripts/test_debug_launch.py .build/debug/OilFind
       - name: Test Swift app
         run: swift test
       - name: Check open core boundary

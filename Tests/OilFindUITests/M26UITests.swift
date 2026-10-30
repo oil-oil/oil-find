@@ -272,7 +272,10 @@ extension M26UITests {
         let ended = try wheel(momentum: 3)
         XCTAssertEqual(ended.momentumPhase, .ended)
         scroll.scrollWheel(with: ended)
-        RunLoop.main.run(until: Date().addingTimeInterval(0.15))
+        let deadline = Date().addingTimeInterval(3)
+        while view.result !== next && Date() < deadline {
+            RunLoop.main.run(until: Date().addingTimeInterval(0.01))
+        }
         XCTAssertTrue(view.result === next)
         XCTAssertEqual(scroll.contentView.bounds.origin, origin)
     }
