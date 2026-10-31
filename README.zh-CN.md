@@ -67,9 +67,10 @@ Oil Find 是 macOS 上的文件搜索工具，思路和 Windows 上的 Everythin
 | <kbd>⌘</kbd><kbd>C</kbd> / <kbd>⌥</kbd><kbd>⌘</kbd><kbd>C</kbd> | 拷贝路径、拷贝名称 |
 | <kbd>⌘</kbd><kbd>⌫</kbd> | 移到废纸篓 |
 | <kbd>Tab</kbd> / <kbd>⌘</kbd><kbd>1</kbd>…<kbd>9</kbd> | 切换类型 |
+| <kbd>⌘</kbd><kbd>K</kbd> | 清空搜索并继续输入 |
 | <kbd>⌘</kbd><kbd>/</kbd> | 语法速查 |
 
-结果也可以直接拖到别的应用里。
+结果也可以直接拖到别的应用里。右键点击文件夹，选「在此文件夹内搜索」可继续查找其中的文件。最近 10 条查询保存在本机；点搜索框右侧的时钟图标可以再次使用或清空记录。
 
 ## Oil Find Pro
 

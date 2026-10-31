@@ -27,6 +27,7 @@ final class SearchViewController: NSViewController, NSWindowDelegate, NSMenuDele
     private var snapshotNoAccess = false
     private let snapshot: Bool
     private let preferences: UserDefaults
+    private let recentQueries: RecentQueries
     private let queue = DispatchQueue(label: "com.oiloil.find.search", qos: .userInteractive)
     private let generation = SearchGeneration(), cache = SearchCache()
     private var timer: Timer?
@@ -69,7 +70,7 @@ final class SearchViewController: NSViewController, NSWindowDelegate, NSMenuDele
         }
         if view.window?.isVisible == true { startSearch(preserveSelection: true) }
     }
-    func panelDidHide() { additionalSearchProvider?.visibilityChanged(false) }
+    func panelDidHide() { recordCurrentQuery(); additionalSearchProvider?.visibilityChanged(false) }
     private let additionalQueue = DispatchQueue(label: "com.oiloil.find.additional", qos: .userInitiated)
     private let supplementQueue = DispatchQueue(label: "com.oiloil.find.supplement", qos: .userInteractive)
     var additionalSources: (() -> [SearchSource])?
@@ -106,6 +107,7 @@ final class SearchViewController: NSViewController, NSWindowDelegate, NSMenuDele
     init(snapshot: Bool, preferences: UserDefaults = .standard) {
         self.snapshot = snapshot
         self.preferences = preferences
+        self.recentQueries = RecentQueries(defaults: preferences)
         super.init(nibName: nil, bundle: nil)
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -119,7 +121,10 @@ final class SearchViewController: NSViewController, NSWindowDelegate, NSMenuDele
         }
         searchField.onSelectionChange = { [weak self] in self?.refreshDiagnostics() }
         searchField.onChange = { [weak self] in self?.setBrowsing(false); self?.startSearch() }
+        searchField.onClear = { [weak self] in self?.recordCurrentQuery() }
         searchField.onKey = { [weak self] event in self?.handleKey(event) ?? false }
+        searchField.onRecent = { [weak self] in self?.showRecentQueries() }
+        searchField.hasRecentQueries = !recentQueries.entries.isEmpty
         filters.onChange = { [weak self] in self?.refreshAdditionalFilter(); self?.searchField.focus(); self?.startSearch() }
         filters.onSortChange = { [weak self] in
             guard let self, !self.snapshot else { return }
@@ -501,6 +506,8 @@ final class SearchViewController: NSViewController, NSWindowDelegate, NSMenuDele
         guard command else { return false }
         switch key {
         case "y": previewSelected(); return true
+        case "k" where flags.intersection([.control, .option, .shift]).isEmpty:
+            searchField.clearText(); return true
         case "c":
             if option { copyName(); return true }
             if searchField.input.currentEditor()?.selectedRange.length ?? 0 > 0 { return false }
@@ -535,17 +542,19 @@ final class SearchViewController: NSViewController, NSWindowDelegate, NSMenuDele
         }
         return snapshot || current?.store === item.source.store
     }
-    private func previewSelected() { if allowOnlineAction() { quickLook.toggle() } }
+    private func previewSelected() { if allowOnlineAction() { recordCurrentQuery(); quickLook.toggle() } }
     private func copyPath() {
         if let item = results.selectedAdditional { performAdditional(item, kind: .copy); return }
         guard stateView == nil, let url = selectedURL else { return }
         NSPasteboard.general.clearContents(); NSPasteboard.general.writeObjects([url as NSURL]); NSPasteboard.general.setString(url.path, forType: .string)
+        recordCurrentQuery()
         footer.showToast(.copiedPath, value: url.path)
     }
     private func copyName() {
         if let item = results.selectedAdditional { performAdditional(item, kind: .copyName); return }
         guard stateView == nil, let item = results.selectedItem else { return }
         NSPasteboard.general.clearContents(); NSPasteboard.general.setString(item.name, forType: .string)
+        recordCurrentQuery()
         footer.showToast(.copiedName, value: item.name)
     }
     private func trashSelected() {
@@ -595,7 +604,50 @@ final class SearchViewController: NSViewController, NSWindowDelegate, NSMenuDele
             if i == 7 { item.isEnabled = results.selectedItem?.source.isOnline == true }
             menu.addItem(item)
         }
+        if results.selectedItem?.kind == 1 {
+            let item = NSMenuItem(title: L10n.text("ctx.searchInFolder"), action: #selector(searchInFolderAction(_:)), keyEquivalent: "")
+            item.target = self; item.isEnabled = results.selectedItem?.source.isOnline == true && results.selectedItem?.path.contains("\"") == false
+            menu.insertItem(item, at: 2)
+        }
         return menu
+    }
+    @objc private func searchInFolderAction(_ sender: NSMenuItem) { searchInSelectedFolder() }
+    private func searchInSelectedFolder() {
+        guard stateView == nil, let item = results.selectedItem, item.kind == 1,
+              !item.path.contains("\""), allowOnlineAction() else { return }
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: item.path, isDirectory: &isDirectory), isDirectory.boolValue else { NSSound.beep(); return }
+        recordCurrentQuery()
+        searchField.text = "path:\"\(item.path)/\""
+        setBrowsing(false); searchField.focus(selectAll: true); startSearch()
+    }
+    private func recordCurrentQuery() {
+        guard !snapshot else { return }
+        recentQueries.add(searchField.text)
+        searchField.hasRecentQueries = !recentQueries.entries.isEmpty
+    }
+    private func showRecentQueries() {
+        guard !recentQueries.entries.isEmpty else { return }
+        recentMenu().popUp(positioning: nil, at: NSPoint(x: searchField.bounds.width - 72, y: searchField.bounds.maxY), in: searchField)
+    }
+    func recentMenu() -> NSMenu {
+        let menu = NSMenu(); menu.delegate = self
+        for query in recentQueries.entries {
+            let item = NSMenuItem(title: query, action: #selector(reuseRecentQuery(_:)), keyEquivalent: "")
+            item.target = self; item.representedObject = query; menu.addItem(item)
+        }
+        menu.addItem(.separator())
+        let clear = NSMenuItem(title: L10n.text("search.clearRecentQueries"), action: #selector(clearRecentQueries(_:)), keyEquivalent: "")
+        clear.target = self; menu.addItem(clear)
+        return menu
+    }
+    @objc private func reuseRecentQuery(_ item: NSMenuItem) {
+        guard let query = item.representedObject as? String else { return }
+        recentQueries.add(query)
+        searchField.text = query; setBrowsing(false); searchField.focus(selectAll: true); startSearch()
+    }
+    @objc private func clearRecentQueries(_ item: NSMenuItem) {
+        recentQueries.clear(); searchField.hasRecentQueries = false
     }
     @objc private func contextAction(_ item: NSMenuItem) {
         switch item.tag { case 0: openSelected(); case 1: revealSelected(); case 2: previewSelected(); case 4: copyPath(); case 5: copyName(); case 7: trashSelected(); default: break }

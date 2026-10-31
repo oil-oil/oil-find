@@ -67,9 +67,10 @@ You can paste paths straight from a terminal or editor: `file://` URLs, quoted o
 | <kbd>⌘</kbd><kbd>C</kbd> / <kbd>⌥</kbd><kbd>⌘</kbd><kbd>C</kbd> | Copy path, copy name |
 | <kbd>⌘</kbd><kbd>⌫</kbd> | Move to Trash |
 | <kbd>Tab</kbd> / <kbd>⌘</kbd><kbd>1</kbd>…<kbd>9</kbd> | Switch kind |
+| <kbd>⌘</kbd><kbd>K</kbd> | Clear the search and keep typing |
 | <kbd>⌘</kbd><kbd>/</kbd> | Syntax reference |
 
-You can also drag results into other apps.
+You can also drag results into other apps. Right-click a folder and choose Search in This Folder to continue searching inside it. The last 10 queries stay on this Mac; use the clock button in the search field to reuse or clear them.
 
 ## Oil Find Pro
 

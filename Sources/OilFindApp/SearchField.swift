@@ -21,6 +21,7 @@ final class SearchField: FlippedView, NSTextFieldDelegate {
     let input = NSTextField()
     let editor = SearchEditor()
     private let glass = NSImageView()
+    private let recent = NSButton()
     private let clear = NSButton()
     private let progress = PassiveProgressIndicator()
     var placeholder: String? { didSet { if placeholder != oldValue { localize() } } }
@@ -28,7 +29,10 @@ final class SearchField: FlippedView, NSTextFieldDelegate {
     private var clearVisible = false, progressVisible = false
     var onSelectionChange: (() -> Void)?
     var onChange: (() -> Void)?
+    var onClear: (() -> Void)?
+    var onRecent: (() -> Void)?
     var onKey: ((NSEvent) -> Bool)?
+    var hasRecentQueries = false { didSet { recent.isHidden = !hasRecentQueries; needsLayout = true } }
     var indexing = false { didSet { updateAccessory() } }
     var text: String {
         get { input.stringValue }
@@ -47,21 +51,28 @@ final class SearchField: FlippedView, NSTextFieldDelegate {
         editor.isFieldEditor = true
         selectionObserver = NotificationCenter.default.addObserver(forName: NSTextView.didChangeSelectionNotification, object: editor, queue: .main) { [weak self] _ in self?.onSelectionChange?() }
         editor.handleKey = { [weak self] event in self?.onKey?(event) ?? false }
+        recent.isBordered = false; recent.image = Theme.symbol("clock", size: 15, weight: .regular)
+        recent.contentTintColor = .tertiaryLabelColor; recent.target = self; recent.action = #selector(showRecent)
+        recent.isHidden = true; recent.toolTip = L10n.text("search.recentQueries")
+        recent.setAccessibilityLabel(L10n.text("search.recentQueries"))
         clear.isBordered = false; clear.image = Theme.symbol("xmark.circle.fill", size: 15, weight: .regular)
         clear.contentTintColor = .tertiaryLabelColor; clear.target = self; clear.action = #selector(clearText)
         progress.style = .spinning; progress.controlSize = .small; progress.isDisplayedWhenStopped = false
         [clear, progress].forEach { $0.wantsLayer = true; $0.alphaValue = 0 }
-        [glass, input, clear, progress].forEach(addSubview)
+        [glass, input, recent, clear, progress].forEach(addSubview)
         updateAccessory()
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
     func localize() {
         input.placeholderAttributedString = NSAttributedString(string: placeholder ?? L10n.text("placeholder"), attributes: [.font: input.font!, .foregroundColor: NSColor.placeholderTextColor])
+        recent.toolTip = L10n.text("search.recentQueries")
+        recent.setAccessibilityLabel(L10n.text("search.recentQueries"))
     }
     override func layout() {
         super.layout()
         glass.frame = NSRect(x: 24, y: (bounds.height - 22) / 2, width: 22, height: 22)
-        input.frame = NSRect(x: 58, y: (bounds.height - 29) / 2, width: max(0, bounds.width - 112), height: 29)
+        input.frame = NSRect(x: 58, y: (bounds.height - 29) / 2, width: max(0, bounds.width - (hasRecentQueries ? 140 : 112)), height: 29)
+        recent.frame = NSRect(x: bounds.width - 72, y: (bounds.height - 16) / 2, width: 16, height: 16)
         clear.frame = NSRect(x: bounds.width - 44, y: (bounds.height - 16) / 2, width: 16, height: 16)
         progress.frame = NSRect(x: bounds.width - 44, y: (bounds.height - 16) / 2, width: 16, height: 16)
     }
@@ -72,7 +83,8 @@ final class SearchField: FlippedView, NSTextFieldDelegate {
     deinit { if let selectionObserver { NotificationCenter.default.removeObserver(selectionObserver) } }
     func controlTextDidEndEditing(_ obj: Notification) { onSelectionChange?() }
     func controlTextDidChange(_ obj: Notification) { updateAccessory(); onChange?() }
-    @objc private func clearText() { text = ""; focus(); onChange?() }
+    @objc func clearText() { onClear?(); text = ""; focus(); onChange?() }
+    @objc private func showRecent() { onRecent?() }
     private func accessory(_ view: NSView, visible: Bool) {
         let animate = window?.isVisible == true
         view.isHidden = false

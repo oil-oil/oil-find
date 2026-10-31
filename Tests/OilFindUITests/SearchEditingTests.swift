@@ -67,5 +67,10 @@ final class SearchEditingTests: XCTestCase {
         XCTAssertTrue(panel.performKeyEquivalent(with: event("c", code: 8, in: panel, modifiers: [.command, .option])))
         XCTAssertEqual(pasteboard.string(forType: .string), file.lastPathComponent)
         XCTAssertEqual(editor.selectedRange(), NSRange(location: 0, length: 4))
+
+        XCTAssertTrue(panel.performKeyEquivalent(with: event("k", code: 40, in: panel)))
+        XCTAssertEqual(field.text, "")
+        XCTAssertTrue(panel.firstResponder === editor)
+        XCTAssertFalse(panel.searchController.handleKey(event("k", code: 40, in: panel, modifiers: [.command, .option])))
     }
 }

@@ -31,11 +31,11 @@ export const keyboardRows: Record<Language, [string, string][]> = {
   zh: [
     ['⇧⌘F', '打开搜索，可以在设置里改'], ['Return', '打开'], ['⌘Return', '在访达中显示'],
     ['空格 / ⌘Y', '用 Quick Look 预览（选中结果后按空格）'], ['⌘C / ⌥⌘C', '拷贝路径、拷贝名称'],
-    ['⌘⌫', '移到废纸篓'], ['Tab / ⌘1…9', '切换类型'], ['⌘/', '语法速查'],
+    ['⌘⌫', '移到废纸篓'], ['Tab / ⌘1…9', '切换类型'], ['⌘K', '清空搜索并继续输入'], ['⌘/', '语法速查'],
   ],
   en: [
     ['⇧⌘F', 'Open search (configurable in Settings)'], ['Return', 'Open'], ['⌘Return', 'Show in Finder'],
     ['Space / ⌘Y', 'Quick Look (Space after selecting a result)'], ['⌘C / ⌥⌘C', 'Copy path, copy name'],
-    ['⌘⌫', 'Move to Trash'], ['Tab / ⌘1…9', 'Switch kind'], ['⌘/', 'Syntax reference'],
+    ['⌘⌫', 'Move to Trash'], ['Tab / ⌘1…9', 'Switch kind'], ['⌘K', 'Clear the search and keep typing'], ['⌘/', 'Syntax reference'],
   ],
 };
