@@ -30,6 +30,7 @@ public struct Query {
         if source.hasPrefix("file://") {
             let remainder = source.dropFirst(7)
             if let slash = remainder.firstIndex(of: "/"),
+               ["", "localhost"].contains(remainder[..<slash].lowercased()),
                let decoded = String(remainder[slash...]).removingPercentEncoding {
                 source = decoded
             }

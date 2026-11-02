@@ -28,6 +28,8 @@ final class M14Tests: XCTestCase {
             (#"'/a/Oil\' Find.app'"#, "/a/Oil' Find.app"),
             ("file:///Users/a/b%20c.md", "/Users/a/b c.md"),
             ("file://localhost/Users/a/b%20c.md", "/Users/a/b c.md"),
+            ("file://LOCALHOST/Users/a/b%20c.md", "/Users/a/b c.md"),
+            ("file://server/Users/a/b%20c.md", "file://server/Users/a/b%20c.md"),
             ("file:///a/%E9%A1%B9%E7%9B%AE.md", "/a/项目.md"),
             ("file:///a/b%ZZ.md", "file:///a/b%ZZ.md"),
             ("file:///a/b%FF.md", "file:///a/b%FF.md"),

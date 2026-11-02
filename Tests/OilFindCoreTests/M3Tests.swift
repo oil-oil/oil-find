@@ -13,7 +13,9 @@ final class M3Tests: XCTestCase {
         XCTAssertEqual(ranges("📄项目文档.md", "文档"), [NSRange(location: 4, length: 2)])
         XCTAssertEqual(ranges("readme-final.md", "read*?final.md"), [NSRange(location: 0, length: 4), NSRange(location: 7, length: 8)])
         XCTAssertEqual(ranges("README.md", "!readme ext:md path:README regex:README"), [])
-        XCTAssertEqual(ranges("README.md", "case:readme"), [NSRange(location: 0, length: 6)])
+        XCTAssertEqual(ranges("README.md", "case:readme"), [])
+        XCTAssertEqual(ranges("README-readme.md", "case:readme"), [NSRange(location: 7, length: 6)])
+        XCTAssertEqual(ranges("README-readme.md", "case:README"), [NSRange(location: 0, length: 6)])
         XCTAssertEqual(ranges("项目文档.md", "xmwd"), [])
         XCTAssertEqual(ranges("readme", "read|!me"), [NSRange(location: 0, length: 4)])
     }
