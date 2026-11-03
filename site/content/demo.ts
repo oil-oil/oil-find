@@ -1,7 +1,7 @@
 import type { Language } from './dict';
 export interface DemoFile { name: string; dir: string; when: string; size: string; kind: string; py: string }
 type DemoFileTuple = [string | [string, string], string | [string, string], string, string, string, string];
-export interface Query { pos: string[]; neg: string[]; exts: string[]; paths: string[]; today: boolean; empty: boolean }
+export interface Query { pos: string[]; neg: string[]; exts: string[]; paths: string[]; today: boolean; noext: boolean; empty: boolean }
 
 export const FILES: readonly DemoFileTuple[] = [
   ['README.md', '~/Developer/tidepool', 't11:49', '8 KB', 'doc', ''],
@@ -19,6 +19,7 @@ export const FILES: readonly DemoFileTuple[] = [
   ['logo-mark.png', '~/Developer/tidepool/public', 'd9-21', '36 KB', 'image', ''],
   [['截屏 2026-09-30 14.22.08.png', 'Screenshot 2026-09-30 at 14.22.08.png'], '~/Desktop', 'y14:22', '1.8 MB', 'image', 'jieping jp'],
   ['package.json', '~/Developer/tidepool', 'd9-27', '2 KB', 'code', ''],
+  ['Makefile', '~/Developer/tidepool', 'd9-27', '1 KB', 'code', ''],
   ['main.swift', '~/Developer/tidepool-mac/Sources', 't15:54', 'b374', 'code', ''],
   [['周报-09.md', 'weekly-09.md'], ['~/Documents/周报', '~/Documents/weekly'], 't10:05', '3 KB', 'doc', 'zhoubao zb'],
   [['发票-2026-08.pdf', 'invoice-2026-08.pdf'], ['~/Documents/报销', '~/Documents/expenses'], 'd9-2', '148 KB', 'doc', 'fapiao fp'],
@@ -37,12 +38,13 @@ export const KINDS = [null, 'folder', 'app', 'doc', 'image', 'code'] as const;
 export const RUN: readonly [string, string, string][] = [['r', '402,875', '8.4'], ['re', '122,565', '6.4'], ['rea', '20,886', '3.5'], ['read', '8,745', '0.8'], ['readm', '5,163', '0.3'], ['readme', '5,156', '0.2']];
 
 export function parse(raw: string): Query {
-  const q: Query = { pos: [], neg: [], exts: [], paths: [], today: false, empty: true };
+  const q: Query = { pos: [], neg: [], exts: [], paths: [], today: false, noext: false, empty: true };
   for (const token of raw.trim().split(/\s+/).filter(Boolean)) {
     const t = token.toLowerCase();
     q.empty = false;
     if (t === 'dm:today') q.today = true;
-    else if (t.startsWith('ext:')) q.exts.push(...t.slice(4).split(';').filter(Boolean));
+    else if (t === 'noext:') q.noext = true;
+    else if (t.startsWith('ext:')) q.exts.push(...t.slice(4).split(/[;,，]/).filter(Boolean));
     else if (t.startsWith('*.') && t.length > 2) q.exts.push(t.slice(2));
     else if (t[0] === '!' && t.length > 1) q.neg.push(t.slice(1));
     else if (t.includes('/')) q.paths.push(t.replace(/\/+$/, ''));
@@ -55,7 +57,9 @@ export function match(file: DemoFile, q: Query, kind: string | null) {
   const name = file.name.toLowerCase();
   const full = (file.dir + '/' + file.name).toLowerCase();
   const ext = name.includes('.') ? name.slice(name.lastIndexOf('.') + 1) : '';
+  const dot = name.lastIndexOf('.');
   if (q.today && file.when[0] !== 't') return false;
+  if (q.noext && (file.kind === 'folder' || dot > 0 && dot < name.length - 1)) return false;
   if (q.exts.length && !q.exts.includes(ext)) return false;
   if (q.neg.some(t => full.includes(t))) return false;
   if (!q.paths.every(p => full.startsWith(p + '/') || full.includes('/' + p.replace(/^\//, '') + '/'))) return false;

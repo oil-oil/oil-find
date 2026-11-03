@@ -10,7 +10,7 @@ final class M17Tests: XCTestCase {
         for name in ["src", "node_modules", "latest", "test", "Node_Modules", "文档", "Desktop", "my_node_modules", "ÄPFEL"] {
             try FileManager.default.createDirectory(at: root.appendingPathComponent(name), withIntermediateDirectories: true)
         }
-        for name in ["src/readme.md", "node_modules/readme.md", "latest/readme.md", "test/readme.md", "Node_Modules/readme.md", "my_node_modules/readme.md", "ÄPFEL/readme.md", "文档/项目文档.md", "项目文档.md", "Desktop/a.png", "foo.txt", "bar.txt", "IMG_123.jpg", "file2.txt", "file10.txt", "ÄPFEL.txt", "b c.md", "main.swift", "report final.pdf", "a | b.txt", "a !b.txt", "a colon:1.txt", "readme中文.md"] {
+        for name in ["src/readme.md", "node_modules/readme.md", "latest/readme.md", "test/readme.md", "Node_Modules/readme.md", "my_node_modules/readme.md", "ÄPFEL/readme.md", "文档/项目文档.md", "项目文档.md", "Desktop/a.png", "foo.txt", "bar.txt", "IMG_123.jpg", "file2.txt", "file10.txt", "ÄPFEL.txt", "b c.md", "main.swift", "report final.pdf", "a | b.txt", "a !b.txt", "a colon:1.txt", "readme中文.md", "LICENSE", ".env", ".config.json", "trailing."] {
             try Data(repeating: 65, count: 4).write(to: root.appendingPathComponent(name))
         }
         let config = IndexConfig(rootPath: root.path, indexDependencyDirs: true, indexPackageContents: true, indexUserLibrary: true, indexSystemDirs: true)
@@ -72,6 +72,8 @@ final class M17Tests: XCTestCase {
             XCTAssertEqual(try paths(#"regex:^IMG_\d+"#, root: root, store: store), ["IMG_123.jpg"])
             XCTAssertEqual(try paths("äpfel", root: root, store: store), try paths("ÄPFEL", root: root, store: store))
             XCTAssertEqual(try paths("ext:md;png", root: root, store: store), try paths("ext:md | ext:png", root: root, store: store))
+            XCTAssertEqual(try paths("ext:md,png", root: root, store: store), try paths("ext:md;png", root: root, store: store))
+            XCTAssertEqual(try paths("ext:md，png", root: root, store: store), try paths("ext:md;png", root: root, store: store))
             XCTAssertTrue(try paths("size:>3b", root: root, store: store).contains("foo.txt"))
             XCTAssertTrue(try paths("dm:today", root: root, store: store).contains("foo.txt"))
             let sorted = try XCTUnwrap(Searcher.search(Query.parse("file"), options: SearchOptions(sort: .name, ascending: true), in: store))
@@ -79,6 +81,13 @@ final class M17Tests: XCTestCase {
         }
         for (i, name) in Query.kindNames.enumerated() { XCTAssertEqual(Query.kindValue(name), UInt8(i + 1)); XCTAssertEqual(Query.kindValue(String(i + 1)), UInt8(i + 1)) }
         for value in ["9", "-1", "256", "bogus", ""] { XCTAssertNil(Query.kindValue(value)) }
+    }
+    func testFilesWithoutExtensions() throws {
+        try fixture { root, store, _ in
+            XCTAssertEqual(try paths("noext:", root: root, store: store), ["LICENSE", ".env", "trailing."])
+            XCTAssertEqual(try paths("noext: license", root: root, store: store), ["LICENSE"])
+            XCTAssertFalse(try paths("noext:", root: root, store: store).contains("src"))
+        }
     }
     func testDiagnosticsRetainExecutableQueryAndRespectEditing() throws {
         for (text, kind) in [("regex:[", QueryDiagnostic.Kind.regex), ("kind:unknown", .kind), ("size:10zz", .size), ("size:5mb..1mb", .size), ("dm:2026-02-31", .date), ("dm:nope", .date)] {

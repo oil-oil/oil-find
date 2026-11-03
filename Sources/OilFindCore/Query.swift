@@ -168,6 +168,7 @@ public enum Matcher {
     case glob(pattern: [UInt8], onPath: Bool)
     case regex(NSRegularExpression, onPath: Bool)
     case ext(Set<UInt64>)
+    case noExtension
     case kind(UInt8)
     case filesOnly
     case foldersOnly
@@ -186,8 +187,9 @@ private func parseMatcher(_ body: String, now: Date, home: String, diagnostic: i
         let key = body[..<colon].lowercased(), value = String(body[body.index(after: colon)...])
         switch key {
         case "ext":
-            let parts = value.split(separator: ";").compactMap { extKey(String($0)) }
+            let parts = value.split(whereSeparator: { $0 == ";" || $0 == "," || $0 == "，" }).compactMap { extKey(String($0)) }
             if !parts.isEmpty { return .ext(Set(parts)) }
+        case "noext": if value.isEmpty { return .noExtension }
         case "kind":
             if let i = Query.kindNames.firstIndex(of: value.lowercased()) { return .kind(UInt8(i + 1)) }
             diagnostic = QueryDiagnostic(kind: .kind)
