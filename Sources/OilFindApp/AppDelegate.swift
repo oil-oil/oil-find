@@ -19,7 +19,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let panel = SearchPanel()
     private let topics = AITopicManager()
     private lazy var topicSearch = AITopicSearchProvider(manager: topics)
-    private var statusItem: NSStatusItem?
+    private(set) var statusItem: NSStatusItem?
     private var statusMenu: NSMenu?
     private var settingsItem: NSMenuItem?, extensionItem: NSMenuItem?
     private var localizedMenuItems: [(String, NSMenuItem)] = []
@@ -134,11 +134,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         manager.onIndexChange = { [weak self] in self?.panel.searchController.indexChanged() }
         manager.start()
     }
-    private func buildMenu(keyCode: UInt32, modifiers: UInt32) {
+    func buildMenu(keyCode: UInt32, modifiers: UInt32, preferences: UserDefaults = .standard) {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         let image = Theme.symbol("magnifyingglass", size: 16, weight: .regular); image.isTemplate = true
         statusItem?.button?.image = image
         statusItem?.menu = makeMenu(keyCode: keyCode, modifiers: modifiers, hotKeyAvailable: hotKey != nil)
+        setMenuBarItemVisible(preferences.object(forKey: "showMenuBarItem") as? Bool ?? true)
+    }
+    func setMenuBarItemVisible(_ visible: Bool) {
+        statusItem?.isVisible = visible
     }
     func makeMenu(keyCode: UInt32 = UInt32(kVK_ANSI_F), modifiers: UInt32 = UInt32(cmdKey | shiftKey), hotKeyAvailable: Bool = true) -> NSMenu {
         let menu = NSMenu(); menu.autoenablesItems = false; menu.delegate = self
@@ -204,6 +208,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 guard let self else { return }
                 self.manager?.updateConfig(SettingsPreferences.indexConfig(limited: self.limited))
             }
+            model.onMenuBarItemChange = { [weak self] in self?.setMenuBarItemVisible($0) }
             model.onPinyinChange = { [weak self] in self?.panel.searchController.startSearch(preserveSelection: true) }
             settingsController = SettingsWindowController(model: model, appExtension: appExtension, externalDrives: externalDrives)
         }
