@@ -225,4 +225,58 @@ final class AdditionalSearchTests: XCTestCase {
         XCTAssertTrue(eventually { controller.results.result?.count == 1 && controller.results.result?.row(0) != nil })
         XCTAssertEqual(controller.results.result?.row(0)?.source.id, source.id)
     }
+    func testFileCategoryTabIgnoresAdditionalDataChangeAndStatusChangeUpdatesFooterWithoutRestartingSearch() throws {
+        _ = NSApplication.shared
+        final class CountingProvider: AdditionalSearchProvider {
+            private enum Failure: Error { case transient }
+            var isEnabled = true
+            let title = "AI Topics"
+            var status: String?
+            var onChange: (() -> Void)?
+            var onStatusChange: (() -> Void)?
+            var searches = 0
+            var failNext = false
+            func prepareSearch(_ query: Query, isCancelled: @escaping () -> Bool) -> () throws -> [AdditionalSearchItem] {
+                searches += 1
+                let shouldFail = failNext; failNext = false
+                return {
+                    if shouldFail { throw Failure.transient }
+                    return [AdditionalSearchItem(id: "1", title: "shared topic", detail: query.raw, location: "Claude", modified: Date(timeIntervalSince1970: 1), icon: NSImage(), actions: [])]
+                }
+            }
+            func visibilityChanged(_ visible: Bool) { }
+        }
+        let panel = SearchPanel(snapshot: true), controller = panel.searchController, provider = CountingProvider(), source = source()
+        defer { controller.panelDidHide(); panel.orderOut(nil); panel.close() }
+        _ = controller.view
+        controller.additionalSources = { [source] }
+        controller.additionalSearchProvider = provider
+        panel.orderFrontRegardless()
+        controller.searchField.text = "shared"
+        controller.filters.select(FilterBar.names.count)
+        XCTAssertTrue(eventually { controller.results.result?.count == 1 })
+        let beforeStatus = provider.searches
+        provider.status = "Indexing topics..."
+        provider.onStatusChange?()
+        XCTAssertEqual(controller.footer.text, "Indexing topics...")
+        XCTAssertEqual(provider.searches, beforeStatus)
+
+        // Switching to a file-only category tab must ignore background additional-provider data notifications.
+        controller.filters.select(7)
+        XCTAssertTrue(eventually { controller.results.result?.count == 1 && controller.results.result?.row(0) != nil })
+        let displayed = controller.results.result
+        let searchesBeforeNotify = provider.searches
+        provider.onChange?()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.08))
+        XCTAssertTrue(controller.results.result === displayed)
+        XCTAssertEqual(provider.searches, searchesBeforeNotify)
+
+        // A transient additional search failure recovers automatically on the next status transition.
+        provider.status = nil
+        provider.failNext = true
+        controller.filters.select(0)
+        XCTAssertTrue(eventually { controller.footer.warning && controller.results.result?.count == 1 })
+        provider.onStatusChange?()
+        XCTAssertTrue(eventually { !controller.footer.warning && controller.results.result?.count == 2 })
+    }
 }

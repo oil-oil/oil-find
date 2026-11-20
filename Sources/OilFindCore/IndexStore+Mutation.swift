@@ -197,7 +197,7 @@ extension IndexStore {
         }
         s.scopeFingerprint = scopeFingerprint
         s.coverage = coverage
-        s.altOff[keys] = UInt32(pos); s.lastEventId = lastEventId; s.fsEventsUUID = fsEventsUUID; s.version = version
+        s.altOff[keys] = UInt32(pos); s.lastEventId = lastEventId; s.fsEventsUUID = fsEventsUUID; s.version = version; s.metadataVersion = metadataVersion
         s.buildHash(); return s
     }
 }

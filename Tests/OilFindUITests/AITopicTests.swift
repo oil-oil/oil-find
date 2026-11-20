@@ -270,4 +270,34 @@ final class AITopicTests: XCTestCase {
         XCTAssertTrue(try index.search("olduniquebody").topics.isEmpty)
         XCTAssertEqual(try index.search("newuniquebody").topics.count, 1)
     }
+    func testUnchangedRefreshDoesNotFireOnChange() throws {
+        let root = try directory(), home = root.appendingPathComponent("home")
+        let project = home.appendingPathComponent(".claude/projects/unchanged")
+        try FileManager.default.createDirectory(at: project, withIntermediateDirectories: true)
+        let file = project.appendingPathComponent(UUID().uuidString + ".jsonl")
+        func line(_ text: String) throws -> Data {
+            var data = try JSONSerialization.data(withJSONObject: ["type": "user", "cwd": "/project", "message": ["content": text]])
+            data.append(10); return data
+        }
+        try line("initialsteadytopic").write(to: file)
+        let suite = "oilfind-unchanged-" + UUID().uuidString, defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let manager = AITopicManager(defaults: defaults, url: root.appendingPathComponent("index/index.sqlite"), locations: .init(home: home), detectProviders: { [.claude] })
+        manager.start(); defer { manager.onChange = nil; manager.onStatusChange = nil; manager.stop() }
+        XCTAssertTrue(eventually { !manager.indexing && manager.count == 1 })
+
+        var dataChanges = 0, statusChanges = 0
+        manager.onChange = { dataChanges += 1 }
+        manager.onStatusChange = { statusChanges += 1 }
+        manager.visibilityChanged(true)
+        XCTAssertTrue(eventually { statusChanges > 0 && !manager.indexing })
+        RunLoop.main.run(until: Date().addingTimeInterval(0.1))
+        XCTAssertEqual(dataChanges, 0, "A refresh that commits zero topic mutations must not trigger search invalidation")
+
+        let handle = try FileHandle(forWritingTo: file); try handle.seekToEnd()
+        try handle.write(contentsOf: line("mutatedsteadytopic")); try handle.close()
+        manager.requestRefresh(immediate: true, providers: [.claude])
+        XCTAssertTrue(eventually { dataChanges > 0 && !manager.indexing })
+        XCTAssertEqual(try manager.readSearch("mutatedsteadytopic", isCancelled: { false }).topics.count, 1)
+    }
 }

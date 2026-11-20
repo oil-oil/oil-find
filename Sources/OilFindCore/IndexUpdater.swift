@@ -334,17 +334,19 @@ public final class IndexUpdater {
                 }
                 changed = true
             }
-            if !coverage.buckets.isEmpty { store.coverage.merge(coverage); changed = true }
+            var metadataChanged = false
+            if !coverage.buckets.isEmpty { store.coverage.merge(coverage); metadataChanged = true }
             // Persist a changed event cursor even when the batch contains only excluded paths.
-            if !changes.isEmpty && store.lastEventId != maxId { store.lastEventId = maxId; changed = true }
+            if !changes.isEmpty && store.lastEventId != maxId { store.lastEventId = maxId; metadataChanged = true }
             if changed { store.version &+= 1 }
+            if metadataChanged { store.metadataVersion &+= 1 }
             summary.removed += Int(store.deletedCount - beforeDeleted)
             mutationMs += (CFAbsoluteTimeGetCurrent()-begin)*1000
         }
         if config.rootPath == "/" {
             var volumes = CoverageStats(); volumes.refreshVolumes()
             store.write {
-                if store.coverage[.volumes] != volumes[.volumes] { store.coverage.buckets[.volumes] = volumes[.volumes]; store.version &+= 1 }
+                if store.coverage[.volumes] != volumes[.volumes] { store.coverage.buckets[.volumes] = volumes[.volumes]; store.metadataVersion &+= 1 }
             }
         }
         summary.mutationMs = mutationMs

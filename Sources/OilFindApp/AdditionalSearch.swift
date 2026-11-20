@@ -45,6 +45,7 @@ public protocol AdditionalSearchProvider: AnyObject {
     var placeholder: String { get }
     var status: String? { get }
     var onChange: (() -> Void)? { get set }
+    var onStatusChange: (() -> Void)? { get set }
     /// Returns the currently available subset of a previously displayed result collection.
     func availableItems(from items: [AdditionalSearchItem]) -> [AdditionalSearchItem]
     /// Prepared on the main thread; work runs alongside file search and returns the complete matching collection.
@@ -55,6 +56,7 @@ public protocol AdditionalSearchProvider: AnyObject {
 public extension AdditionalSearchProvider {
     var placeholder: String { title }
     var status: String? { nil }
+    var onStatusChange: (() -> Void)? { get { nil } set { } }
     func availableItems(from items: [AdditionalSearchItem]) -> [AdditionalSearchItem] { isEnabled ? items : [] }
     func backgroundIndexingChanged(_ busy: Bool) { }
 }
