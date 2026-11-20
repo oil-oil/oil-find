@@ -8,8 +8,8 @@ extension IndexStore {
     public func save(to path: String) throws {
         try read { try saveLocked(to: path) }
     }
-    internal func saveSnapshot(to path: String) throws -> UInt64 {
-        try read { try saveLocked(to: path); return version }
+    internal func saveSnapshot(to path: String) throws -> (version: UInt64, metadataVersion: UInt64) {
+        try read { try saveLocked(to: path); return (version, metadataVersion) }
     }
     private func saveLocked(to path: String) throws {
         let coverageData = try JSONEncoder().encode(coverage)

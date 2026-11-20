@@ -380,4 +380,30 @@ final class M7LiveTests: XCTestCase {
         XCTAssertLessThan(elapsed, 2); XCTAssertEqual(manager.state, .idle)
         print("T80 immediate manager stop=\(elapsed)s")
     }
+    func testExcludedOnlyEventsAdvanceCursorAndPersistWithoutBumpingVersionOrNotifying() throws {
+        let f = try Fixture(); try f.file("keep.txt"); try f.mkdir(".git"); try f.file(".git/index")
+        var config = f.config; config.indexDependencyDirs = false
+        let manager = IndexManager(config: config, dbURL: f.db, settingsDefaults: nil)
+        manager.start(); defer { manager.stop() }
+        XCTAssertTrue(eventually { manager.state == .ready })
+        // Wait past initial fixture FSEvents and IndexManager's 1s notifyIndex throttle so any new notification fires immediately.
+        RunLoop.main.run(until: Date().addingTimeInterval(1.15))
+        let store = try XCTUnwrap(manager.store)
+        let beforeVersion = store.read { store.version }
+        let beforeCursor = max(store.read { store.lastEventId }, FSWatcher.currentEventId())
+        let beforeDependency = store.read { store.coverage[.dependency].count }
+        var indexChanges = 0
+        manager.onIndexChange = { indexChanges += 1 }
+        let targetCursor = beforeCursor + 100
+        manager.injectEvents(f.events([".git/index"], id: targetCursor), mustRescanAll: false)
+        XCTAssertTrue(eventually { store.read { store.lastEventId } == targetCursor })
+        RunLoop.main.run(until: Date().addingTimeInterval(0.15))
+        XCTAssertEqual(store.read { store.version }, beforeVersion)
+        XCTAssertEqual(indexChanges, 0)
+        XCTAssertGreaterThan(store.read { store.coverage[.dependency].count }, beforeDependency)
+        manager.saveNow()
+        let saved = try XCTUnwrap(IndexStore.load(from: f.db.path))
+        XCTAssertEqual(saved.lastEventId, targetCursor)
+        XCTAssertEqual(saved.coverage[.dependency].count, store.read { store.coverage[.dependency].count })
+    }
 }

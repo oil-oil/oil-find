@@ -202,6 +202,12 @@ final class SearchPresentation {
         let rhs = other.single.map { [$0.storeVersion] } ?? other.multiple?.results.map(\.storeVersion) ?? []
         return zip(a, b).allSatisfy { $0.id == $1.id && $0.store === $1.store && $0.isOnline == $1.isOnline && $0.displayName == $1.displayName } && versions == rhs
     }
+    func matchesVersions(_ expected: [String: UInt64]) -> Bool {
+        if single == nil && multiple == nil { return true }
+        let captured = sources
+        let versions = single.map { [$0.storeVersion] } ?? multiple?.results.map(\.storeVersion) ?? []
+        return captured.indices.allSatisfy { expected[captured[$0].id] == versions[$0] }
+    }
     func isCurrent(_ current: [SearchSource]) -> Bool {
         if single == nil && multiple == nil { return true }
         let captured = sources

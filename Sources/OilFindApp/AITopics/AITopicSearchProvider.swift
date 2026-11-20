@@ -6,6 +6,7 @@ final class AITopicSearchProvider: AdditionalSearchProvider {
     private let icons = AITopicIcons()
     private var chinese: Bool { L10n.chinese }
     var onChange: (() -> Void)?
+    var onStatusChange: (() -> Void)?
     var isEnabled: Bool { manager.isEnabled }
     var placeholder: String { L10n.text("topicsPlaceholder", chinese: chinese) }
     var title: String { L10n.text("topicsTitle", chinese: chinese) }
@@ -15,6 +16,7 @@ final class AITopicSearchProvider: AdditionalSearchProvider {
     init(manager: AITopicManager) {
         self.manager = manager
         manager.onChange = { [weak self] in self?.onChange?() }
+        manager.onStatusChange = { [weak self] in self?.onStatusChange?() }
         manager.onAvailabilityChange = { [weak self] in self?.onChange?() }
     }
     func visibilityChanged(_ visible: Bool) { manager.visibilityChanged(visible) }

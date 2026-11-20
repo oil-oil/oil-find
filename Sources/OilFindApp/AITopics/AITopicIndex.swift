@@ -60,6 +60,8 @@ public final class AITopicIndex {
     let sql: AITopicSQL
     private let readOnly: Bool
     private var inTransaction = false
+    private var transactionMutated = false
+    private(set) var mutationVersion: UInt64 = 0
     private var dirty = Set<Int64>()
     private var dirtyRows: [Int64: Set<Int64>] = [:]
     private var incremental: Bool
@@ -253,8 +255,9 @@ public final class AITopicIndex {
         lastWriteStats = (0, 0)
         do {
             try work(); try flush(); try workCheckpoint?(); statements.values.forEach { sqlite3_reset($0.handle) }; try sql.run("COMMIT"); inTransaction = false
+            if transactionMutated { mutationVersion &+= 1; transactionMutated = false }
         } catch {
-            statements.values.forEach { sqlite3_reset($0.handle) }; try? sql.run("ROLLBACK"); inTransaction = false; dirty.removeAll(); dirtyRows.removeAll(); topicKeys.removeAll()
+            statements.values.forEach { sqlite3_reset($0.handle) }; try? sql.run("ROLLBACK"); inTransaction = false; transactionMutated = false; dirty.removeAll(); dirtyRows.removeAll(); topicKeys.removeAll()
             documents.removeAll(); cacheHead = nil; cacheTail = nil; cacheBytes = 0; cacheEpoch = nil
             cachedSearches.removeAll(); searchCacheBytes = 0
             throw error
@@ -324,6 +327,7 @@ public final class AITopicIndex {
                    OR transcript!=excluded.transcript OR archived!=excluded.archived OR excerpt!=excluded.excerpt
                 """)
             s.bind([topic.key, topic.id, topic.provider.rawValue, topic.title, topic.project, String(topic.modified), topic.desktopID, topic.transcript, topic.archived ? "1" : "0", topic.excerpt]); _ = try s.next()
+            if sqlite3_changes(sql.db) > 0 { transactionMutated = true }
             try message(topic.key, key: "meta", body: topic.title + "\n" + topic.project)
         }
     }
@@ -332,7 +336,7 @@ public final class AITopicIndex {
             let pk = try key(topic)
             if body.isEmpty {
                 let s = try statement("DELETE FROM messages WHERE topic=? AND key=?"); s.bind([String(pk), messageKey]); _ = try s.next()
-                if sqlite3_changes(sql.db) > 0 { dirty.insert(pk) }; return
+                if sqlite3_changes(sql.db) > 0 { dirty.insert(pk); transactionMutated = true }; return
             }
             try workCheckpoint?()
             let bytes = Data(body.utf8)
@@ -346,6 +350,7 @@ public final class AITopicIndex {
             let current = try statement("SELECT rowid FROM messages WHERE topic=? AND key=?")
             current.bind([String(pk), messageKey]); guard try current.next() else { throw AITopicError.database("Missing message") }
             try changed(pk, row: current.int(0))
+            transactionMutated = true
         }
     }
     func topic(_ key: String) throws -> AITopic? {
@@ -368,6 +373,7 @@ public final class AITopicIndex {
                 let update = try statement("UPDATE topics SET archived=? WHERE id=?")
                 update.bind([value ? "1" : "0", id]); _ = try update.next()
             }
+            if !changes.isEmpty { transactionMutated = true }
         }
     }
     func synchronizeScope(_ identity: String, provider: AITopicProvider) throws {
@@ -378,6 +384,7 @@ public final class AITopicIndex {
             try reconcile(provider: provider, topics: [], files: [])
             let update = try statement("INSERT INTO topic_scopes VALUES(?,?) ON CONFLICT(provider) DO UPDATE SET identity=excluded.identity")
             update.bind([provider.rawValue, identity]); _ = try update.next()
+            transactionMutated = true
         }
     }
     func scope(_ provider: AITopicProvider) throws -> String? {
@@ -391,6 +398,7 @@ public final class AITopicIndex {
             guard try lookup.next() else { return }
             let pk = lookup.int(0)
             let remove = try statement("DELETE FROM topics WHERE id=?"); remove.bind([id]); _ = try remove.next()
+            if sqlite3_changes(sql.db) > 0 { transactionMutated = true }
             dirty.remove(pk); topicKeys.removeValue(forKey: id)
         }
     }
@@ -410,7 +418,7 @@ public final class AITopicIndex {
         try transaction {
             let pk = try key(topic)
             let s = try statement("DELETE FROM messages WHERE topic=? AND key GLOB ?"); s.bind([String(pk), prefix + "*"]); _ = try s.next()
-            if sqlite3_changes(sql.db) > 0 { dirty.insert(pk) }
+            if sqlite3_changes(sql.db) > 0 { dirty.insert(pk); transactionMutated = true }
         }
     }
     func reconcileMessages(_ topic: String, prefix: String, liveKeys: Set<String>) throws -> Bool {
@@ -424,7 +432,7 @@ public final class AITopicIndex {
             for row in stale {
                 let s = try statement("DELETE FROM messages WHERE rowid=?"); sqlite3_bind_int64(s.handle, 1, row); _ = try s.next()
             }
-            if !stale.isEmpty { dirty.insert(pk); removed = true }
+            if !stale.isEmpty { dirty.insert(pk); removed = true; transactionMutated = true }
         }
         return removed
     }
@@ -442,7 +450,7 @@ public final class AITopicIndex {
                 let s = try statement("DELETE FROM topic_cursors WHERE path=?"); s.bind([path]); _ = try s.next()
             }
             let remove = try statement("DELETE FROM topics WHERE provider=? AND id NOT IN (SELECT id FROM seen_topics)"); remove.bind([provider.rawValue]); _ = try remove.next()
-            if sqlite3_changes(sql.db) > 0 { topicKeys.removeAll() }
+            if sqlite3_changes(sql.db) > 0 { topicKeys.removeAll(); transactionMutated = true }
             dirty = Set(try dirty.filter { pk in
                 let s = try statement("SELECT 1 FROM topics WHERE pk=?"); s.bind([String(pk)]); return try s.next()
             })

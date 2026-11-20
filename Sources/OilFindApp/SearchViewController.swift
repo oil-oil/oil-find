@@ -48,8 +48,9 @@ final class SearchViewController: NSViewController, NSWindowDelegate, NSMenuDele
     var supplementaryProvider: SupplementarySearchProvider?
     var additionalSearchProvider: AdditionalSearchProvider? {
         didSet {
-            oldValue?.onChange = nil; oldValue?.visibilityChanged(false)
+            oldValue?.onChange = nil; oldValue?.onStatusChange = nil; oldValue?.visibilityChanged(false)
             additionalSearchProvider?.onChange = { [weak self] in self?.additionalChanged() }
+            additionalSearchProvider?.onStatusChange = { [weak self] in self?.additionalStatusChanged() }
             if isViewLoaded { additionalChanged() }
         }
     }
@@ -58,16 +59,35 @@ final class SearchViewController: NSViewController, NSWindowDelegate, NSMenuDele
         filters.additionalTitle = additionalSearchProvider?.isEnabled == true ? additionalSearchProvider?.title : nil
         searchField.placeholder = filters.additionalSelected ? additionalSearchProvider?.placeholder : nil
     }
+    private func additionalStatusChanged() {
+        guard isViewLoaded else { return }
+        if additionalSearchFailed, view.window?.isVisible == true, filters.additionalSelected || filters.options.kind == nil {
+            startSearch(preserveSelection: true)
+            return
+        }
+        guard filters.additionalSelected, let result = results.result else { return }
+        updateFooter(result)
+    }
     private func additionalChanged() {
+        let wasAdditionalSelected = filters.additionalSelected
         refreshAdditionalFilter()
-        _ = generation.next(); results.cancelPendingRefresh(); results.cancelPress()
-        if additionalSearchProvider?.isEnabled != true { additionalPending = false }
+        let pruned: SearchPresentation?
         if let provider = additionalSearchProvider, let result = results.result,
            let filtered = result.removingUnavailableAdditionalItems(using: provider, options: filters.options) {
-            results.refresh(filtered, applyingAvailabilityImmediately: true)
-            resultDidChange(filtered)
+            pruned = filtered
+        } else { pruned = nil }
+        if !wasAdditionalSelected && !filters.additionalSelected && filters.options.kind != nil && pruned == nil {
+            if additionalSearchProvider?.isEnabled != true { additionalPending = false; refreshProgress() }
+            return
+        }
+        _ = generation.next(); results.cancelPendingRefresh(); results.cancelPress()
+        additionalPending = false
+        if let pruned {
+            results.refresh(pruned, applyingAvailabilityImmediately: true)
+            resultDidChange(pruned)
         }
         if view.window?.isVisible == true { startSearch(preserveSelection: true) }
+        else { refreshProgress() }
     }
     func panelDidHide() { additionalSearchProvider?.visibilityChanged(false) }
     private let additionalQueue = DispatchQueue(label: "com.oiloil.find.additional", qos: .userInitiated)
@@ -269,14 +289,17 @@ final class SearchViewController: NSViewController, NSWindowDelegate, NSMenuDele
         if !snapshot { options.pinyin = UserDefaults.standard.bool(forKey: "pinyinEnabled") }
         let query = editingQuery(store: store), previous = results.result
         // Retrying the displayed query is passive, even if an earlier request is still pending.
-        let preserveViewport = refresh || preserveSelection || previous?.matchesSearch(query: query, options: options, additionalOnly: additionalOnly) == true
+        let sameSearch = previous?.matchesSearch(query: query, options: options, additionalOnly: additionalOnly) == true
+        let preserveViewport = refresh || preserveSelection || sameSearch
+        let passive = (refresh || preserveSelection) && sameSearch
         let cancelled = { [generation] in !generation.current(token) }
+        let initialVersions = Dictionary(uniqueKeysWithValues: sources.map { source in (source.id, source.store.read { source.store.version }) })
         let supplementary = additionalOnly ? nil : supplementaryProvider?.prepareSearch(query, options: options, sources: sources, isCancelled: cancelled)
         let additional = additionalSearchProvider.flatMap { provider in
             provider.isEnabled && (additionalOnly || options.kind == nil) ? provider.prepareSearch(query, isCancelled: cancelled) : nil
         }
         additionalSearchFailed = false
-        additionalPending = additional != nil
+        additionalPending = additional != nil && !passive
         if sources.isEmpty && additional == nil {
             pendingNewSearch = nil
             results.clear(preservingViewport: true)
@@ -327,7 +350,14 @@ final class SearchViewController: NSViewController, NSWindowDelegate, NSMenuDele
             }
             let anchoredRow = anchor.flatMap { found.index(sourceID: $0.sourceID, store: $0.store, id: $0.id, path: $0.path) }
             let row = anchoredRow ?? 0
-            let deferNames = sources.isEmpty && additional != nil || previous?.query.raw == query.raw && ((refresh || preserveSelection) && previous?.hasAdditional == true || anchor != nil && anchoredRow == nil && supplementary != nil)
+            let deferNames = sources.isEmpty && additional != nil
+                || previous?.query.raw == query.raw && (
+                    preserveViewport && (
+                        (previous?.hasAdditional == true && additional != nil)
+                        || (previous?.hasSupplements == true && supplementary != nil)
+                    )
+                    || anchor != nil && anchoredRow == nil && supplementary != nil
+                )
             DispatchQueue.main.async { [weak self] in
                 guard let self, self.generation.current(token) else { return }
                 self.diagnostics = query.diagnostics
@@ -343,12 +373,21 @@ final class SearchViewController: NSViewController, NSWindowDelegate, NSMenuDele
             if supplementary != nil || additional != nil {
                 group.notify(queue: self.queue) { [weak self] in
                     guard let self, self.generation.current(token) else { return }
+                    if let supplementary, !found.matchesVersions(initialVersions) {
+                        box.hits = supplementary()
+                        guard self.generation.current(token) else { return }
+                    }
                     if additional == nil && box.hits.isEmpty && !deferNames { return }
                     let files = box.hits.isEmpty ? found : found.supplement(box.hits, options: options)
                     let combined = files.including(additionalBox.items, options: options, elapsedMs: additionalBox.elapsedMs)
                     DispatchQueue.main.async { [weak self] in
-                        guard let self, self.generation.current(token), combined.isCurrent(self.searchSources) else { return }
-                        self.pendingNewSearch = nil; self.additionalPending = false; self.additionalSearchFailed = additionalBox.failed
+                        guard let self, self.generation.current(token) else { return }
+                        self.additionalPending = false
+                        guard combined.isCurrent(self.searchSources) else {
+                            self.refreshProgress()
+                            return
+                        }
+                        self.pendingNewSearch = nil; self.additionalSearchFailed = additionalBox.failed
                         if additionalBox.failed, previous?.query.raw == query.raw, previous?.hasAdditional == true {
                             self.refreshProgress()
                             self.footer.warning = true; self.footer.text = self.additionalSearchProvider?.status ?? L10n.text("search.failed")

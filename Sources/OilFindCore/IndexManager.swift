@@ -36,7 +36,7 @@ public final class IndexManager {
     }
     private var updater: IndexUpdater?
     private weak var savedStore: IndexStore?
-    private var savedVersion: UInt64 = 0
+    private var savedVersion: UInt64 = 0, savedMetadataVersion: UInt64 = 0
     private var pendingNotification: DispatchWorkItem?, lastNotification = -Double.infinity
     private var stateCallback: ((State) -> Void)?, indexCallback: (() -> Void)?, batchCallback: ((ApplySummary) -> Void)?
     private var replayCount = 0, dataPrefix = false, hashMs = 0.0
@@ -143,7 +143,7 @@ public final class IndexManager {
                     }
                 }
                 self.locked { self.currentStore = loaded }
-                self.saveQueue.sync { self.savedStore = loaded; self.savedVersion = loaded.version }
+                self.saveQueue.sync { self.savedStore = loaded; self.savedVersion = loaded.version; self.savedMetadataVersion = loaded.metadataVersion }
                 self.setState(.ready); self.notifyIndex(replaced: true)
             }
         }
@@ -168,7 +168,7 @@ public final class IndexManager {
                     self.eventQueue.async {
                         guard self.valid(token) else { return }
                         self.locked { self.currentStore = s; self.hashMs = 0 }
-                        self.saveQueue.sync { self.savedStore = s; self.savedVersion = rootChanged ? UInt64.max : s.version }
+                        self.saveQueue.sync { self.savedStore = s; self.savedVersion = rootChanged ? UInt64.max : s.version; self.savedMetadataVersion = rootChanged ? UInt64.max : s.metadataVersion }
                         self.setState(.ready); self.notifyIndex(replaced: true)
                         DispatchQueue.global(qos: .utility).async { _ = Pinyin.shared }
                         self.onBeforeLoadedHashBuild?()
@@ -348,6 +348,7 @@ public final class IndexManager {
             return
         }
         guard !changes.isEmpty, let store = self.store, let updater = locked({ self.updater }) else { return }
+        let beforeVersion = store.read { store.version }
         let result = updater.apply(changes, to: store)
         guard !updater.isCancelled else { return }
         let callback = locked { self.summary = result; return batchCallback }
@@ -356,7 +357,9 @@ public final class IndexManager {
             // The event queue is the sole writer; readers may continue during copying.
             let compact = store.read { store.compacted() }
             locked { currentStore = compact }; notifyIndex(replaced: true)
-        } else { notifyIndex(replaced: false) }
+        } else if store.read({ store.version != beforeVersion }) {
+            notifyIndex(replaced: false)
+        }
     }
     public func explain(path: String) -> CoverageExplanation {
         let config = DispatchQueue.getSpecific(key: eventKey) == true ? self.config : eventQueue.sync { self.config }
@@ -423,12 +426,12 @@ public final class IndexManager {
     }
     private func saveChanged() {
         guard !locked({ offline }), let s = store else { return }
-        let version = s.read { s.version }
-        if savedStore === s && savedVersion == version { return }
+        let (version, metadataVersion) = s.read { (s.version, s.metadataVersion) }
+        if savedStore === s && savedVersion == version && savedMetadataVersion == metadataVersion { return }
         do {
-            // The saved version is captured under the same read lock as the file snapshot.
+            // The saved versions are captured under the same read lock as the file snapshot.
             let saved = try s.saveSnapshot(to: dbURL.path)
-            savedStore = s; savedVersion = saved
+            savedStore = s; savedVersion = saved.version; savedMetadataVersion = saved.metadataVersion
         } catch { fputs("Oil Find: save failed: \(error)\n", stderr) }
     }
     public func saveNow() {

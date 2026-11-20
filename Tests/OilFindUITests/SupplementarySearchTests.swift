@@ -116,7 +116,7 @@ final class SupplementarySearchTests: XCTestCase {
         let db = FileManager.default.temporaryDirectory.appendingPathComponent("M22-selection-" + UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: db) }
         try store.save(to: db.path)
-        let indexManager = IndexManager(config: IndexConfig(rootPath: "/generated"), dbURL: db)
+        let indexManager = IndexManager(config: IndexConfig(rootPath: "/generated"), dbURL: db, settingsDefaults: nil)
         defer { indexManager.stop() }
         indexManager.startOffline()
         let deadline = Date().addingTimeInterval(3)
@@ -152,5 +152,122 @@ final class SupplementarySearchTests: XCTestCase {
         store.write { store.version += 1 }
         let base = SearchPresentation(try XCTUnwrap(Searcher.search(Query.parse("发票"), in: store)))
         XCTAssertEqual(base.supplement([hit], options: .init()).count, base.count)
+    }
+    func testPassiveRefreshKeepsSupplementaryRowsAndClearButtonWhenNameRowIsSelected() throws {
+        _ = NSApplication.shared
+        final class EmptyAdditionalProvider: AdditionalSearchProvider {
+            var isEnabled = true
+            let title = "AI Topics"
+            var onChange: (() -> Void)?
+            func prepareSearch(_ query: Query, isCancelled: @escaping () -> Bool) -> () throws -> [AdditionalSearchItem] { { [] } }
+            func visibilityChanged(_ visible: Bool) { }
+        }
+        let store = store(), provider = Provider(), additional = EmptyAdditionalProvider()
+        let panel = SearchPanel(snapshot: true), controller = panel.searchController
+        defer { panel.orderOut(nil); panel.close() }
+        _ = controller.view
+        let db = FileManager.default.temporaryDirectory.appendingPathComponent("M22-name-selection-" + UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: db) }
+        try store.save(to: db.path)
+        let indexManager = IndexManager(config: IndexConfig(rootPath: "/generated"), dbURL: db, settingsDefaults: nil)
+        defer { indexManager.stop() }
+        indexManager.startOffline()
+        let deadline = Date().addingTimeInterval(3)
+        while indexManager.store == nil && Date() < deadline { RunLoop.main.run(until: Date().addingTimeInterval(0.01)) }
+        let loaded = try XCTUnwrap(indexManager.store)
+        controller.manager = indexManager
+        controller.supplementaryProvider = provider
+        controller.additionalSearchProvider = additional
+        let base = SearchPresentation(try XCTUnwrap(Searcher.search(Query.parse("发票"), in: loaded)))
+        controller.searchField.text = "发票"
+        controller.present(base.supplement([.init(sourceID: "startup", entryID: 3, detail: "Generated additional text")], options: .init()), selection: 0)
+        panel.orderFrontRegardless()
+        XCTAssertEqual(controller.results.selectedID, 1)
+        XCTAssertEqual(controller.results.result?.count, 2)
+
+        // Passive refreshes with a filename match selected must not drop supplements or blink the clear button.
+        provider.delay = true
+        for trigger in [controller.indexChanged, controller.sourcesChanged, controller.panelWillShow, { additional.onChange?() }] {
+            trigger()
+            RunLoop.main.run(until: Date().addingTimeInterval(0.08))
+            XCTAssertEqual(controller.results.result?.count, 2)
+            XCTAssertEqual(controller.results.selectedID, 1)
+            XCTAssertFalse(controller.searchField.indexing)
+            provider.gate.signal()
+            RunLoop.main.run(until: Date().addingTimeInterval(0.08))
+            XCTAssertEqual(controller.results.result?.count, 2)
+            XCTAssertEqual(controller.results.selectedID, 1)
+            XCTAssertFalse(controller.searchField.indexing)
+        }
+    }
+    func testVersionSkewRetriesSupplementsAndStaleCombinedClearsPendingIndexing() throws {
+        _ = NSApplication.shared
+        final class SkewProvider: SupplementarySearchProvider {
+            var isEnabled = true
+            let started = DispatchSemaphore(value: 0), release = DispatchSemaphore(value: 0)
+            var bumpOnPrepare = false
+            var calls = 0
+            private let lock = NSLock()
+            func prepareSearch(_ query: Query, options: SearchOptions, sources: [SearchSource], isCancelled: @escaping () -> Bool) -> () -> [SupplementaryHit] {
+                let bump = bumpOnPrepare
+                if bump, let source = sources.first {
+                    // Mutate after initialVersions is captured and before name search runs.
+                    source.store.write { source.store.version &+= 1 }
+                }
+                var searchCalls = 0
+                return { [self] in
+                    let (totalCalls, localAttempt) = lock.withLock { calls += 1; searchCalls += 1; return (calls, searchCalls) }
+                    guard let source = sources.first else { return [] }
+                    let version = source.store.read { source.store.version }
+                    if bump && localAttempt == 1 { return [] }
+                    if !bump && localAttempt == 1 {
+                        started.signal()
+                        _ = release.wait(timeout: .now() + 3)
+                    }
+                    guard !isCancelled(), totalCalls > 0 else { return [] }
+                    return [.init(sourceID: source.id, entryID: 3, detail: "Content hit", sourceVersion: version)]
+                }
+            }
+            func sourcesDidChange(_ sources: [SearchSource]) { }
+            func userActivity(visible: Bool, typing: Bool) { }
+        }
+        final class EmptyAdditionalProvider: AdditionalSearchProvider {
+            var isEnabled = true
+            let title = "AI Topics"
+            var onChange: (() -> Void)?
+            func prepareSearch(_ query: Query, isCancelled: @escaping () -> Bool) -> () throws -> [AdditionalSearchItem] { { [] } }
+            func visibilityChanged(_ visible: Bool) { }
+        }
+        let store = store(), provider = SkewProvider(), additional = EmptyAdditionalProvider()
+        let controller = SearchViewController(snapshot: true)
+        _ = controller.view
+        controller.additionalSources = { [SearchSource(id: "startup", displayName: "", isOnline: true, store: store)] }
+        controller.supplementaryProvider = provider
+        controller.additionalSearchProvider = additional
+
+        // Case 1: store mutates between search dispatch and name search; supplement retries against the new version.
+        provider.bumpOnPrepare = true
+        controller.searchField.text = "发票"
+        controller.startSearch()
+        var deadline = Date().addingTimeInterval(3)
+        while (controller.results.result?.count ?? 0) != 2 && Date() < deadline { RunLoop.main.run(until: Date().addingTimeInterval(0.01)) }
+        XCTAssertEqual(controller.results.result?.count, 2)
+        XCTAssertEqual(provider.calls, 2)
+        XCTAssertFalse(controller.searchField.indexing)
+
+        // Case 2: store mutates after found completes so combined.isCurrent fails; pending indicator still clears.
+        provider.bumpOnPrepare = false
+        controller.searchField.text = "发票2"
+        controller.startSearch()
+        XCTAssertEqual(provider.started.wait(timeout: .now() + 3), .success)
+        deadline = Date().addingTimeInterval(3)
+        while controller.results.result?.query.raw != "发票2" && Date() < deadline { RunLoop.main.run(until: Date().addingTimeInterval(0.01)) }
+        XCTAssertEqual(controller.results.result?.query.raw, "发票2")
+        XCTAssertTrue(controller.searchField.indexing)
+        store.write { store.version &+= 1 }
+        provider.release.signal()
+        deadline = Date().addingTimeInterval(3)
+        while controller.searchField.indexing && Date() < deadline { RunLoop.main.run(until: Date().addingTimeInterval(0.01)) }
+        XCTAssertFalse(controller.searchField.indexing)
     }
 }

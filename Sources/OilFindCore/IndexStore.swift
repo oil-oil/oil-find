@@ -10,6 +10,7 @@ public final class IndexStore {
     internal var scopeFingerprint: UInt64 = 0
     public var homeIndex: UInt32, deletedCount: UInt32 = 0, liveCount: Int
     public var version: UInt64 = 0, lastEventId: UInt64 = 0, scanFinishedAt: UInt64
+    internal var metadataVersion: UInt64 = 0
     public var coverage = CoverageStats()
     public var fsEventsUUID: String = ""
     public internal(set) var nameOff: UnsafeMutablePointer<UInt32>, parent: UnsafeMutablePointer<UInt32>

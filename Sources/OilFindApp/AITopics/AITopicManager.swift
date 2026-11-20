@@ -12,6 +12,7 @@ final class AITopicManager: ObservableObject {
     @Published private(set) var count = 0
     @Published private(set) var diskBytes: Int64 = 0
     var onChange: (() -> Void)?
+    var onStatusChange: (() -> Void)?
     var onAvailabilityChange: (() -> Void)?
     var isEnabled: Bool { enabled && !activeProviders.isEmpty }
     private let defaults: UserDefaults
@@ -203,7 +204,10 @@ final class AITopicManager: ObservableObject {
         guard !running, started, isEnabled, !locked({ suspended }) else { return }
         let (token, capturedProviders) = locked { (lifecycle, selectedProviders) }
         guard let job = syncQueue.next() else { return }
-        running = true; indexing = true; onChange?()
+        running = true
+        let startedIndexing = !indexing
+        indexing = true
+        if startedIndexing { onStatusChange?() }
         // Normal source writes enqueue another pass; only lifecycle changes cancel committed progress.
         let cancelled = { [weak self] in
             guard let self else { return true }
@@ -213,6 +217,8 @@ final class AITopicManager: ObservableObject {
             guard let self else { return }
             // Serial dispatch jobs can use different OS threads; thread CPU baselines stay local.
             let budget = AITopicWorkBudget()
+            let initialVersion = self.writer?.mutationVersion ?? 0
+            var lastNotifiedVersion = initialVersion
             var failures = Set<AITopicProvider>(), successes = Set<AITopicProvider>()
             var interrupted = false, complete = false
             do {
@@ -236,7 +242,9 @@ final class AITopicManager: ObservableObject {
                 self.writer!.workCheckpoint = checkpoint
                 defer { self.writer?.workCheckpoint = nil }
                 let progress = {
-                    if Date().timeIntervalSince(self.lastProgress) > 0.5 {
+                    let current = self.writer?.mutationVersion ?? initialVersion
+                    if current != lastNotifiedVersion, Date().timeIntervalSince(self.lastProgress) > 0.5 {
+                        lastNotifiedVersion = current
                         self.lastProgress = Date()
                         DispatchQueue.main.async { [weak self] in
                             guard let self, self.locked({ self.lifecycle == token }) else { return }; self.onChange?()
@@ -266,6 +274,7 @@ final class AITopicManager: ObservableObject {
                 try self.writer?.checkpoint()
             } catch is CancellationError { interrupted = true }
             catch { failures.insert(job.history); complete = true; Self.reportFailure(error, provider: job.history, stage: "writer") }
+            let dataChanged = (self.writer?.mutationVersion ?? initialVersion) != lastNotifiedVersion
             let total = (try? self.writer?.count(providers: capturedProviders)) ?? 0
             let size = ["", "-wal"].reduce(Int64(0)) { total, suffix in
                 total + ((try? FileManager.default.attributesOfItem(atPath: self.url.path + suffix)[.size] as? NSNumber)?.int64Value ?? 0)
@@ -278,9 +287,11 @@ final class AITopicManager: ObservableObject {
                 if interrupted || !complete { self.syncQueue.resume(job.history) }
                 if complete { self.syncQueue.complete(job.history) }
                 self.failedProviders.subtract(successes); self.failedProviders.formUnion(failures)
+                let wasIndexing = self.indexing, wasFailed = self.failed
                 self.indexing = !self.syncQueue.isEmpty && !self.locked({ self.suspended })
                 self.failed = !self.failedProviders.isEmpty; self.diskBytes = size; self.count = total
-                self.onChange?()
+                if dataChanged { self.onChange?() }
+                else if wasIndexing != self.indexing || wasFailed != self.failed { self.onStatusChange?() }
                 self.scheduleRefresh(immediate: true)
             }
         }
@@ -342,7 +353,7 @@ final class AITopicManager: ObservableObject {
             }
             DispatchQueue.main.async { [weak self] in
                 guard let self, self.locked({ self.lifecycle == token }) else { return }
-                self.count = total; self.onChange?()
+                self.count = total
             }
         }
     }
